@@ -111,9 +111,9 @@ def prepare_data_loaders(file_paths, labels, batch_size=64, num_workers=4):
 
     # Initialize data loaders
     loaders = {
-        'train': DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True, pin_memory=True),
-        'val': DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, pin_memory=True),
-        'test': DataLoader(test_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, pin_memory=True)
+        'train': DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True, pin_memory=True,persistent_workers=True),
+        'val': DataLoader(val_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, pin_memory=True,persistent_workers=True),
+        'test': DataLoader(test_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, pin_memory=True,persistent_workers=True)
     }
     return loaders
 
@@ -184,7 +184,7 @@ def main():
     # Example usage
     save_path = 'C:/Users/jaspa/Grant ML/slp/data'
     file_paths, labels = load_data(save_path)
-    loaders = prepare_data_loaders(file_paths, labels)
+    loaders = prepare_data_loaders(file_paths, labels,batch_size=64,num_workers=15)
 
     model = SimpleCNN().to('cuda')  # Assuming the use of a GPU
     criterion = nn.CrossEntropyLoss()
