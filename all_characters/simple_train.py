@@ -50,7 +50,7 @@ class SimpleCNN(nn.Module):
     """
     def __init__(self):
         super(SimpleCNN, self).__init__()
-        self.conv1 = nn.Conv1d(9, 32, kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.LazyConv1d(32, kernel_size=3, stride=1, padding=1)
         self.conv2 = nn.Conv1d(32, 64, kernel_size=3, stride=1, padding=1)
         self.pool = nn.MaxPool1d(2, 2)
         self.fc1 = nn.LazyLinear(128)  # LazyLinear allows deferring the determination of in_features
