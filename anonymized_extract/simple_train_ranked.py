@@ -54,7 +54,7 @@ class SimpleCNN(nn.Module):
         self.conv2 = nn.Conv1d(32, 64, kernel_size=3, stride=1, padding=1)
         self.pool = nn.MaxPool1d(2, 2)
         self.fc1 = nn.LazyLinear(128)  # LazyLinear allows deferring the determination of in_features
-        self.fc2 = nn.Linear(128, 5)  # Assuming 5 classes for classification
+        self.fc2 = nn.Linear(128,2)  # Assuming 5 classes for classification
 
     def forward(self, x):
         """Defines the forward pass of the model."""
@@ -77,15 +77,15 @@ def load_data(save_path):
     Returns:
         tuple: A tuple containing arrays of file paths and labels.
     """
-    with open(os.path.join(save_path, 'file_paths.pkl'), 'rb') as f:
-        file_paths = np.array(pickle.load(f))
+    with gzip.open("C:\\Users\\jaspa\\Grant ML\\slp\\data\\ranked_file_paths.npy.gz", 'rb') as f:
+        file_paths = np.load(f)
 
-    with open(os.path.join(save_path, 'label_list.pkl'), 'rb') as f:
-        labels = np.array(pickle.load(f))
+    with gzip.open("C:\\Users\\jaspa\\Grant ML\\slp\\data\\ranked_label_list.npy.gz", 'rb') as f:
+        labels  = np.load(f)
 
     return file_paths, labels
 
-def prepare_data_loaders(file_paths, labels, batch_size=64, num_workers=4):
+def prepare_data_loaders(file_paths, labels, batch_size=64, num_workers=15):
     """
     Prepares training, validation, and test data loaders.
 
@@ -117,7 +117,7 @@ def prepare_data_loaders(file_paths, labels, batch_size=64, num_workers=4):
     }
     return loaders
 
-def train_model(model, criterion, optimizer, loaders, device, num_epochs=4):
+def train_model(model, criterion, optimizer, loaders, device, num_epochs=10):
     """
     Trains the model.
 
@@ -184,7 +184,7 @@ def main():
     # Example usage
     save_path = 'C:/Users/jaspa/Grant ML/slp/data'
     file_paths, labels = load_data(save_path)
-    loaders = prepare_data_loaders(file_paths, labels,batch_size=64,num_workers=15)
+    loaders = prepare_data_loaders(file_paths, labels,batch_size=64,num_workers=16)
 
     model = SimpleCNN().to('cuda')  # Assuming the use of a GPU
     criterion = nn.CrossEntropyLoss()
