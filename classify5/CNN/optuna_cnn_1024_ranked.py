@@ -3,8 +3,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torch.optim import Adam
+from torchsummary import summary
 
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
 import numpy as np
 import optuna
 import gzip
@@ -16,6 +20,7 @@ from prettytable import PrettyTable
 from datetime import datetime
 import os
 import gc
+import logging
 
 class GameSegmentDataset(Dataset):
     """
@@ -51,127 +56,224 @@ class GameSegmentDataset(Dataset):
         label_tensor = torch.tensor(self.labels[idx], dtype=torch.long)
         return segment_tensor, label_tensor
     
+# class CustomNet(nn.Module):
+#     def __init__(self, trial):
+#         super(CustomNet, self).__init__()
+
+#         # Fixed dropout rate (not tuned by Optuna)
+#         dropout_rate = 0.35
+
+#         # Convolutional layers setup
+#         self.conv_layers = nn.ModuleList()
+#         self.poolings = []
+#         self.bns = nn.ModuleList()
+#         self.dropouts = nn.ModuleList()
+
+#         num_layers = trial.suggest_int(f"num_conv_layers", 3, 7)
+#         in_channels = 9  # Fixed input channel size
+
+        
+        
+#         ######################################################################################################
+#         # In length is 2 ** 10
+#         # Padding is set up so that the out length is always reduced by 1 / 2 ** out_length_reduction_exponent
+#         # The length of a kernel is: kernel + (dilation - 1) * (kernel_size - 1)
+#         # The max lenght of a kernel is 25 which is kernel_size = 7 and dilation = 4
+#         # The in lenght can never be less than 25
+#         # Since the in lenght is always a power of 2, the in lenght can be no less than 2 ** 5 = 32,
+#         # we need to make sure not to reduce the in lenght too much, we keep track of
+#         # how much we can still reduce the length by using length_reduction_power_left which is set to 5.
+#         ######################################################################################################
+#         length_reduction_exporent_remaining = 5
+#         in_length_exponent = 10
+#         for i in range(num_layers):  # Convolutional layers
+#             ###########################
+#             # In length is a power of 2
+#             ###########################
+#             if i == 0: 
+#                 out_channels = trial.suggest_int(f"conv_{i}_out_channels", 9, 9 * 48, step = 9)
+#                 groups = 9
+#             elif i == -1:
+#                 out_channels = trial.suggest_int(f"conv_{i}_out_channels", 1, 256)
+#                 groups = 1
+#             else:
+#                 out_channels = trial.suggest_int(f"conv_{i}_out_channels", 1, 512)
+#                 groups = 1
+#             # kernel_size = trial.suggest_int(f"conv_{i}_kernel_size", 3, 7, step=2)
+#             k = trial.suggest_int(f"conv_{i}_kernel_size_power", 1, 5)  # can safely change 5 to be anything
+#             kernel_size = 2 * k + 1
+#             dilation = trial.suggest_int(f"conv_{i}_dilation", 1, 4)
+#             out_length_reduction_exponent = trial.suggest_int(f"conv_{i}_out_length_reduction_exponent", 0, min(2, length_reduction_exporent_remaining))
+#             # conv_stride_length_exponent = trial.suggest_int(f"conv_{i}_stride_length_exponent", 0, out_length_reduction_exponent)
+#             conv_stride_length_exponent = out_length_reduction_exponent
+#             # Keep track of how much reducing we still can do
+#             length_reduction_exporent_remaining -= out_length_reduction_exponent
+#             in_length_exponent -= out_length_reduction_exponent
+#             # Set stride
+#             stride = 2 ** conv_stride_length_exponent
+#             # Padding is chosen so that out length is a power of 2
+#             # there is a floor in the formula. If we want to use more than 2 for out_length_reduction_exponent, we neen do caluclate the cases
+#             if (conv_stride_length_exponent == 2) and (((dilation * k) % 2) == 1):
+#                 padding = dilation * k - 1
+#             else:
+#                 padding = dilation * k
+                
+#             self.conv_layers.append(nn.Conv1d(in_channels, out_channels, kernel_size,stride, padding, dilation, groups))
+#             in_channels = out_channels  # Update in_channels for the next layer
+
+#             if conv_stride_length_exponent < out_length_reduction_exponent:
+#                 pooling_type = trial.suggest_int(f"layer_{i}_pooling_type", 0, 1)    # 1: max, 0: avg
+#                 pool_kernal_size_exponent = out_length_reduction_exponent - conv_stride_length_exponent
+#                 if pooling_type == 1:
+#                     self.poolings.append(nn.MaxPool1d(2 ** pool_kernal_size_exponent))
+#                 else:
+#                     self.poolings.append(nn.AvgPool1d(2 ** pool_kernal_size_exponent))
+#             else:
+#                 self.poolings.append(None)    #   No pooling in current layer
+
+            
+#             # Batch Normalization
+#             self.bns.append(nn.BatchNorm1d(in_channels))
+            
+#         # Max pooling layer
+#         # The kernel can be a power of two, up to the in lenght
+#         # In length of the output will be 2 ** out_length_exponent
+#         # and lenght can be 1, 2, 4, 8, 16, 32
+        
+#         kernel_exponent = trial.suggest_int(f"maxpool_kernel_exponent",length_reduction_exporent_remaining , in_length_exponent)
+#         kernel_size = 2 ** kernel_exponent
+#         in_length_exponent -= kernel_exponent
+        
+#         self.pool1 = nn.MaxPool1d(kernel_size=kernel_size)
+        
+        
+#         # The length right now should be 2 ** in_length_exponent, so we can be exact in our first lineal layer
+#         self.fc1 = nn.Linear(out_channels * 2 ** in_length_exponent, trial.suggest_int("fc1_out_features", 32, 256))
+#         # self.fc1 = nn.LazyLinear(trial.suggest_int("fc1_out_features", 64, 256))
+#         self.fc1_dropout = nn.Dropout(dropout_rate)  # Dropout after fc1
+#         self.fc2 = nn.Linear(self.fc1.out_features, trial.suggest_int("fc2_out_features", 32, 128))
+#         self.fc2_dropout = nn.Dropout(dropout_rate)  # Dropout after fc2
+#         self.fc3 = nn.Linear(self.fc2.out_features, 5)  # Output layer with 1 unit for binary classification
+
+#     def forward(self, x):
+#         # Apply convolutional layers with optional ReLU and fixed dropout
+#         for i, conv_layer in enumerate(self.conv_layers):
+#             x = conv_layer(x)
+#             x = self.bns[i](x)
+#             if self.poolings[i]:
+#                 x = self.poolings[i](x)
+#             x = F.relu(x)            
+
+#         # Optional max pooling after conv layers
+#         # if self.use_pool1:
+#         x = self.pool1(x)
+
+#         # Flatten for fully connected layers
+#         x = torch.flatten(x, 1)
+#         x = F.relu(self.fc1(x))
+#         x = self.fc1_dropout(x)
+#         x = F.relu(self.fc2(x))
+#         x = self.fc2_dropout(x)
+#         x = self.fc3(x)  # Output without activation for BCEWithLogitsLoss
+#         return x
+
 class CustomNet(nn.Module):
     def __init__(self, trial):
         super(CustomNet, self).__init__()
-
+        self.trial = trial
         # Fixed dropout rate (not tuned by Optuna)
         dropout_rate = 0.35
 
-        # Convolutional layers setup
-        self.conv_layers = nn.ModuleList()
-        self.poolings = []
-        self.bns = nn.ModuleList()
-        self.dropouts = nn.ModuleList()
-
-        num_layers = trial.suggest_int(f"num_conv_layers", 3, 7)
+        num_layers = trial.suggest_int("num_conv_layers", 3, 7)
         in_channels = 9  # Fixed input channel size
 
-        
-        
-        ######################################################################################################
-        # In length is 2 ** 10
-        # Padding is set up so that the out length is always reduced by 1 / 2 ** out_length_reduction_exponent
-        # The length of a kernel is: kernel + (dilation - 1) * (kernel_size - 1)
-        # The max lenght of a kernel is 25 which is kernel_size = 7 and dilation = 4
-        # The in lenght can never be less than 25
-        # Since the in lenght is always a power of 2, the in lenght can be no less than 2 ** 5 = 32,
-        # we need to make sure not to reduce the in lenght too much, we keep track of
-        # how much we can still reduce the length by using length_reduction_power_left which is set to 5.
-        ######################################################################################################
-        length_reduction_exporent_remaining = 5
-        in_length_exponent = 10
-        for i in range(num_layers):  # Convolutional layers
-            ###########################
-            # In length is a power of 2
-            ###########################
-            if i == 0: 
-                out_channels = trial.suggest_int(f"conv_{i}_out_channels", 9, 9 * 48, step = 9)
-                groups = 9
-            elif i == -1:
-                out_channels = trial.suggest_int(f"conv_{i}_out_channels", 1, 256)
-                groups = 1
-            else:
-                out_channels = trial.suggest_int(f"conv_{i}_out_channels", 1, 512)
-                groups = 1
-            # kernel_size = trial.suggest_int(f"conv_{i}_kernel_size", 3, 7, step=2)
-            k = trial.suggest_int(f"conv_{i}_kernel_size_power", 1, 5)  # can safely change 5 to be anything
-            kernel_size = 2 * k + 1
-            dilation = trial.suggest_int(f"conv_{i}_dilation", 1, 4)
-            out_length_reduction_exponent = trial.suggest_int(f"conv_{i}_out_length_reduction_exponent", 0, min(2, length_reduction_exporent_remaining))
-            # conv_stride_length_exponent = trial.suggest_int(f"conv_{i}_stride_length_exponent", 0, out_length_reduction_exponent)
-            conv_stride_length_exponent = out_length_reduction_exponent
-            # Keep track of how much reducing we still can do
-            length_reduction_exporent_remaining -= out_length_reduction_exponent
-            in_length_exponent -= out_length_reduction_exponent
-            # Set stride
-            stride = 2 ** conv_stride_length_exponent
-            # Padding is chosen so that out length is a power of 2
-            # there is a floor in the formula. If we want to use more than 2 for out_length_reduction_exponent, we neen do caluclate the cases
-            if (conv_stride_length_exponent == 2) and (((dilation * k) % 2) == 1):
-                padding = dilation * k - 1
-            else:
-                padding = dilation * k
-                
-            self.conv_layers.append(nn.Conv1d(in_channels, out_channels, kernel_size,stride, padding, dilation, groups))
-            in_channels = out_channels  # Update in_channels for the next layer
+        # Define the first convolution layer with depthwise convolution
+        out_channels_1 = trial.suggest_int("out_channels_1", 9, 9 * 16, 9)
+        kernel_size_1 = trial.suggest_int("kernel_size_1", 3, 7)
+        stride_1 = trial.suggest_int("stride_1", 1, 2)
+        padding_1 = trial.suggest_int("padding_1", 1, 3)
 
-            if conv_stride_length_exponent < out_length_reduction_exponent:
-                pooling_type = trial.suggest_int(f"layer_{i}_pooling_type", 0, 1)    # 1: max, 0: avg
-                pool_kernal_size_exponent = out_length_reduction_exponent - conv_stride_length_exponent
-                if pooling_type == 1:
-                    self.poolings.append(nn.MaxPool1d(2 ** pool_kernal_size_exponent))
-                else:
-                    self.poolings.append(nn.AvgPool1d(2 ** pool_kernal_size_exponent))
-            else:
-                self.poolings.append(None)    #   No pooling in current layer
+        self.conv1 = nn.Conv1d(
+            in_channels, out_channels_1, kernel_size_1,
+            stride=stride_1, padding=padding_1, groups=in_channels
+        )
+        # self.pool1 = nn.MaxPool1d(2)
+        self.batch_norm1 = nn.LazyBatchNorm1d()
+        self.dropout1 = nn.Dropout(dropout_rate)
 
-            
-            # Batch Normalization
-            self.bns.append(nn.BatchNorm1d(in_channels))
-            
-        # Max pooling layer
-        # The kernel can be a power of two, up to the in lenght
-        # In length of the output will be 2 ** out_length_exponent
-        # and lenght can be 1, 2, 4, 8, 16, 32
-        
-        kernel_exponent = trial.suggest_int(f"maxpool_kernel_exponent",length_reduction_exporent_remaining , in_length_exponent)
-        kernel_size = 2 ** kernel_exponent
-        in_length_exponent -= kernel_exponent
-        
-        self.pool1 = nn.MaxPool1d(kernel_size=kernel_size)
-        
-        
-        # The length right now should be 2 ** in_length_exponent, so we can be exact in our first lineal layer
-        self.fc1 = nn.Linear(out_channels * 2 ** in_length_exponent, trial.suggest_int("fc1_out_features", 32, 256))
-        # self.fc1 = nn.LazyLinear(trial.suggest_int("fc1_out_features", 64, 256))
-        self.fc1_dropout = nn.Dropout(dropout_rate)  # Dropout after fc1
-        self.fc2 = nn.Linear(self.fc1.out_features, trial.suggest_int("fc2_out_features", 32, 128))
-        self.fc2_dropout = nn.Dropout(dropout_rate)  # Dropout after fc2
-        self.fc3 = nn.Linear(self.fc2.out_features, 5)  # Output layer with 1 unit for binary classification
+        # Define the rest of the convolution layers
+        conv_layers = []
+        in_channels = out_channels_1
+
+        # Initialize variable for counting total stride of conv layers:
+        stride_count = 1 if stride_1 == 2 else 0
+
+        for i in range(2, num_layers + 1):
+            out_channels_i = trial.suggest_int(f"out_channels_{i}", 16, 128)
+            kernel_size_i = trial.suggest_int(f"kernel_size_{i}", 3, 7)
+            stride_i = trial.suggest_int(f"stride_{i}", 1, 2)
+            padding_i = trial.suggest_int(f"padding_{i}", 1, 3)
+
+            conv_layers.append(nn.Conv1d(
+                in_channels, out_channels_i, kernel_size_i,
+                stride=stride_i, padding=padding_i
+            ))
+            conv_layers.append(nn.ReLU())
+            # conv_layers.append(nn.MaxPool1d(2))
+            conv_layers.append(nn.LazyBatchNorm1d(out_channels_i))
+            conv_layers.append(nn.Dropout(dropout_rate))
+            in_channels = out_channels_i
+            if stride_i > 1:
+                stride_count += 1
+
+        if stride_count < 3:            # StrideCount 3 => ~2^7 = 256 time steps
+            raise optuna.TrialPruned()
+
+        # Define the first fully connected layer with LazyLinear
+        fc_input_size = out_channels_i * (1024 // (2 ** num_layers))
+        fc_output_size = trial.suggest_int("fc_output_size_0", 64, 256)
+        fc_layers = [
+            nn.LazyLinear(fc_input_size, fc_output_size),
+            nn.ReLU(),
+            nn.LazyBatchNorm1d(),
+            nn.Dropout(dropout_rate)
+        ]
+
+        # Define the rest of the fully connected layers
+        for i in range(1, trial.suggest_int("num_fc_layers", 1, 3)):
+            fc_output_size = trial.suggest_int(f"fc_output_size_{i}", 64, 256)
+            fc_layers.extend([
+                nn.Linear(fc_input_size, fc_output_size),
+                nn.ReLU(),
+                nn.LazyBatchNorm1d(),
+                nn.Dropout(dropout_rate)
+            ])
+            fc_input_size = fc_output_size
+
+        # Output layer
+        self.fc = nn.Linear(fc_input_size, 5)   # Output layer
+
+        # Combine all layers
+        self.conv_layers = nn.Sequential(*conv_layers)
+        self.fc_layers = nn.Sequential(*fc_layers)
 
     def forward(self, x):
-        # Apply convolutional layers with optional ReLU and fixed dropout
-        for i, conv_layer in enumerate(self.conv_layers):
-            x = conv_layer(x)
-            x = self.bns[i](x)
-            if self.poolings[i]:
-                x = self.poolings[i](x)
-            x = F.relu(x)            
+        x = self.conv1(x)
+        # x = self.pool1(x)
+        x = self.batch_norm1(x)
+        x = F.relu(x)
+        x = self.dropout1(x)
 
-        # Optional max pooling after conv layers
-        # if self.use_pool1:
-        x = self.pool1(x)
+        x = self.conv_layers(x)
 
-        # Flatten for fully connected layers
-        x = torch.flatten(x, 1)
-        x = F.relu(self.fc1(x))
-        x = self.fc1_dropout(x)
-        x = F.relu(self.fc2(x))
-        x = self.fc2_dropout(x)
-        x = self.fc3(x)  # Output without activation for BCEWithLogitsLoss
+        # Reshape for fully connected layers
+        x = x.view(x.size(0), -1)
+
+        x = self.fc_layers(x)
+
+        # Output layer
+        x = self.fc(x)
         return x
-
 
 def load_data(save_path):
     """
@@ -223,80 +325,28 @@ def prepare_data_loaders(file_paths, labels, batch_size=64, num_workers=15):
     }
     return loaders
 
-def train_model(model, criterion, optimizer, loaders, device, num_epochs=4):
-    """
-    Trains the model.
-
-    Args:
-        model (nn.Module): The neural network model to train.
-        criterion (callable): The loss function.
-        optimizer (Optimizer): The optimizer for updating model parameters.
-        loaders (dict): Dictionary containing 'train' and 'test' DataLoaders.
-        device (torch.device): The device to train on.
-        num_epochs (int): Number of epochs to train for.
-    """
-    for epoch in range(num_epochs):
-        model.train()
-        train_loss = 0.0
-        train_correct = 0
-        total = 0
-        train_loader_tqdm = tqdm(loaders['train'], desc=f'Epoch {epoch+1}/{num_epochs}', unit='batch')
-        
-        for inputs, labels in train_loader_tqdm:
-            inputs, labels = inputs.to(device), labels.to(device).float()
-                    
-            # Forward pass
-            outputs = model(inputs).squeeze()
-            loss = criterion(outputs, labels)
-            
-            # Backward pass and optimization
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            # Update progress
-            train_loss += loss.item()
-            predicted = torch.where(outputs >= 0, torch.tensor(1), torch.tensor(0))
-            total += labels.size(0)
-            train_correct += (predicted == labels).sum().item()
-            train_loader_tqdm.set_postfix(loss=(train_loss / total), accuracy=(100.0 * train_correct / total))
-
-        # Evaluate on the test set
-        # evaluate_model(model, loaders['test'], device)
-
-def evaluate_model(model, test_loader, device):
-    """
-    Evaluates the model on the test dataset.
-
-    Args:
-        model (nn.Module): The trained model.
-        test_loader (DataLoader): DataLoader for the test dataset.
-        device (torch.device): The device to evaluate on.
-    """
-    model.eval()
-    test_correct = 0
-    test_total = 0
-    with torch.no_grad():
-        for inputs, labels in test_loader:
-            inputs, labels = inputs.to(device), labels.to(device).float()
-            outputs = model(inputs).squeeze()
-            predicted = torch.where(outputs >= 0.5, torch.tensor(1), torch.tensor(0))
-            test_total += labels.size(0)
-            test_correct += (predicted == labels).sum().item()
-    
-    print(f'Test Accuracy: {100.0 * test_correct / test_total}%')
-
-def objective(trial, dataloaders):
+def objective(trial, dataloaders, study_name):
     # Device configuration
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Initialize the model with hyperparameters suggested by Optuna
     model = CustomNet(trial).to(device)
+ 
+    # Get a single batch to determine the input size
+    inputs, _ = next(iter(dataloaders['train']))
+
+    # Log model info
+    summary(model, input_size=inputs.size()[1:], device='cuda' if torch.cuda.is_available() else 'cpu')
+    model_summary_str = str(model)
+    logging.info(f'Model Summary:\n{model_summary_str}')
 
     # Define the optimizer and criterion
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
     # optimizer = torch.optim.SGD(model.parameters(), lr = 0.1)
     # criterion = nn.BCEWithLogitsLoss(reduction = 'sum')
+
+    # class_weights = torch.tensor([1, 98880 / 93713, 98880 / 54502, 98880 / 43391, 98880 / 32625], device = device)
+    # class_weights.to(device)
     criterion = nn.CrossEntropyLoss(reduction = 'sum')
     def train_epoch(model, dataloader, optimizer, criterion):
         model.train()
@@ -304,22 +354,29 @@ def objective(trial, dataloaders):
         train_correct = 0
         train_total = 0
         for inputs, labels in dataloader:
-            inputs, labels = inputs.to(device), labels.to(device).long()
+            inputs, labels = inputs.to(device), labels.to(device)
 
             # Forward pass
             outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            
+            loss = criterion(outputs, labels)  # Apply .float() to labels
+
             # Backward pass and optimization
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            
+
             # Update progress
             train_loss += loss.item()
-            _, predicted = torch.max(outputs[:, :5], dim=1)
             train_total += labels.size(0)
-            train_correct += (predicted == labels).sum().item()
+
+            # Apply softmax to get the predicted probabilities for each class
+            predicted_probs = torch.softmax(outputs, dim=1)
+
+            # Get the predicted class indices by finding the index with the maximum probability
+            predicted_classes = torch.argmax(predicted_probs, dim=1)
+
+            # Add 1 for every correct prediction
+            train_correct += (predicted_classes == labels).sum().item()
 
         train_accuracy = 100 * train_correct / train_total
         train_loss = train_loss / train_total
@@ -333,52 +390,92 @@ def objective(trial, dataloaders):
         val_total = 0
         with torch.no_grad():
             for inputs, labels in dataloader:
-                inputs, labels = inputs.to(device), labels.to(device).long()
+                inputs, labels = inputs.to(device), labels.to(device)
 
                 # Forward pass
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
-                
+
                 # Update progress
                 val_loss += loss.item()
-                _, predicted = torch.max(outputs[:, :5], dim=1)
                 val_total += labels.size(0)
-                val_correct += (predicted == labels).sum().item()
 
-        val_accuracy = 100 * val_correct / val_total
-        val_loss = val_loss / val_total
+                # Apply softmax to get the predicted probabilities for each class
+                predicted_probs = torch.softmax(outputs, dim=1)
 
-        return val_loss, val_accuracy
+                # Get the predicted class indices by finding the index with the maximum probability
+                predicted_classes = torch.argmax(predicted_probs, dim=1)
 
-    def evaluate_test(model, dataloader, criterion):
+                # Add 1 for every correct prediction
+                val_correct += (predicted_classes == labels).sum().item()
+
+            val_accuracy = 100 * val_correct / val_total
+            val_loss = val_loss / val_total
+
+            return val_loss, val_accuracy
+
+    def evaluate_test(model, dataloader, criterion, study_name):
         model.eval()  # Set model to evaluation mode
         test_loss = 0.0
         test_correct = 0
         test_total = 0
+        y_true = []
+        y_pred = []
+        
+        confusion_matrix_path = 'data\\classify5\\confusion_matrices\\' + study_name + '\\'
+        os.makedirs(confusion_matrix_path, exist_ok=True)
         with torch.no_grad():  # No gradients needed
             for inputs, labels in dataloader:
-                inputs, labels = inputs.to(device), labels.to(device).long()
+                inputs, labels = inputs.to(device), labels.to(device)
 
                 # Forward pass
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
-                
+
                 # Update progress
                 test_loss += loss.item()
-                _, predicted = torch.max(outputs[:, :5], dim=1)
                 test_total += labels.size(0)
-                test_correct += (predicted == labels).sum().item()
-                
-        test_accuracy = 100 * test_correct / test_total
-        test_loss = test_loss / test_total
 
-        return test_loss, test_accuracy
+                # Apply softmax to get the predicted probabilities for each class
+                predicted_probs = torch.softmax(outputs, dim=1)
+
+                # Get the predicted class indices by finding the index with the maximum probability
+                predicted_classes = torch.argmax(predicted_probs, dim=1)
+
+                # Add 1 for every correct prediction
+                test_correct += (predicted_classes == labels).sum().item()
+
+                # Collect true and predicted labels for confusion matrix
+                y_true.extend(labels.cpu().numpy())
+                y_pred.extend(predicted_classes.cpu().numpy())
+
+            test_accuracy = 100 * test_correct / test_total
+            test_loss = test_loss / test_total
+
+            # Create confusion matrix
+            cm = confusion_matrix(y_true, y_pred, normalize='all')
+
+            current_datetime = datetime.now()
+            current_datetime_string = current_datetime.strftime("%Y-%m-%d %H:%M:%S ")
+            current_datetime_string = current_datetime_string.replace(":", "-")
+
+            # Plot confusion matrix
+            opponents = ['FOX', 'FALCO', 'MARTH', 'SHEIK', 'CAPTAIN_FALCON']
+            plt.figure(figsize=(7, 7))
+            sns.heatmap(cm, annot=True, fmt='f', cmap='Blues', xticklabels=opponents, yticklabels=opponents)
+            plt.gca().invert_yaxis()
+            plt.xlabel('Predicted')
+            plt.ylabel('True')
+            plt.title('Confusion Matrix')
+            plt.savefig(confusion_matrix_path + current_datetime_string + ' Confusion Matrix.png')
+
+            return test_loss, test_accuracy
                 
     # Training loop with early stopping and tqdm progress bar
-    patience = 3
-    epochs = 20
+    patience = 8
+    epochs = 100
     min_delta = 0.0001
-    min_overfit = .001
+    min_overfit = .0005
 
     best_val_loss = float('inf')
     best_val_acc = 0.0
@@ -410,6 +507,8 @@ def objective(trial, dataloaders):
         # Update progress bar
         pbar.set_postfix_str(f"Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_accuracy:.4f}")
         pbar.update(1)  # Move the progress bar by one epoch
+        # Log Losses
+        logging.info(f'Epoch {epoch + 1}/{epochs} - Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_accuracy:.4f}')
 
         # Check early stopping condition
         if epochs_no_improve >= patience or epochs_overfit >= patience:
@@ -418,7 +517,7 @@ def objective(trial, dataloaders):
             break
 
     # Evaluate model on test set after training is complete (if necessary)
-    test_loss, test_accuracy = evaluate_test(model, dataloaders['test'], criterion)
+    test_loss, test_accuracy = evaluate_test(model, dataloaders['test'], criterion, study_name)
     print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
 
     pbar.close()  # Ensure the progress bar is closed
@@ -428,22 +527,38 @@ def objective(trial, dataloaders):
 
 
 def main():
-    # Example usage
+    # Ensure reproducibility
+    seed = 42
+    torch.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    sampler = optuna.samplers.TPESampler(seed = seed)
+    
+    # Get starting time
+    current_datetime = datetime.now()
+    current_datetime_string = current_datetime.strftime("%Y-%m-%d %H:%M:%S - ")
+    current_datetime_string = current_datetime_string.replace(":", "-")
+    
+    # Set Some Variables
+    study_name = current_datetime_string + "Basic CNN - Classify Top 5 Characters"
+    batch_size = 256
+
+    # Set up logging file
+    log_file = 'data\\classify5\\logs\\' + study_name + ' Log.txt'
+    logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
     save_path = 'C:/Users/jaspa/Grant ML/slp/data'
     file_paths, labels = load_data(save_path)
-    loaders = prepare_data_loaders(file_paths, labels)
+    loaders = prepare_data_loaders(file_paths, labels, batch_size = batch_size)
 
-    current_datetime = datetime.now()
-    current_datetime_string = current_datetime.strftime("%Y-%m-%d %H:%M:%S ")
-
-    study = optuna.create_study(study_name = current_datetime_string + "Basic CNN",
-                                direction="minimize",
-                                storage = "mysql+pymysql://root:MomentusPigs@localhost:3306/optuna_trials"
+    study = optuna.create_study(study_name = study_name,
+                                sampler = sampler,
+                                direction = "minimize",
+                                storage = "mysql+pymysql://root:MomentusPigs@localhost:3306/optuna_trials",
                                 )
 
-    objective_with_loaders = lambda trial: objective(trial, loaders)
+    objective_with_loaders = lambda trial: objective(trial, loaders, study_name = study_name)
 
-    study.optimize(objective_with_loaders, n_trials = 1000, show_progress_bar = True, timeout=3600 * 6)
+    study.optimize(objective_with_loaders, n_trials = 1000, show_progress_bar = True, timeout=3600 * 10)
 
     # Print the overall best hyperparameters
     print("Best trial overall:")
