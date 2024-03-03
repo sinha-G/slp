@@ -352,8 +352,8 @@ def objective(trial, dataloaders, study_name):
             return test_loss, test_accuracy
                 
     # Training loop with early stopping and tqdm progress bar
-    patience = -1
-    epochs = 100
+    patience = 15
+    epochs = 200
     min_delta = 0.0001
     min_overfit = .0005
 
