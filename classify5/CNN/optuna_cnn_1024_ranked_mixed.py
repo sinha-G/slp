@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torch.optim import Adam
 from torchsummary import summary
+from torch.cuda.amp import GradScaler, autocast
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
@@ -55,128 +56,7 @@ class GameSegmentDataset(Dataset):
         segment_tensor = torch.from_numpy(segment).float()
         label_tensor = torch.tensor(self.labels[idx], dtype=torch.long)
         return segment_tensor, label_tensor
-    
-# class CustomNet(nn.Module):
-#     def __init__(self, trial):
-#         super(CustomNet, self).__init__()
-
-#         # Fixed dropout rate (not tuned by Optuna)
-#         dropout_rate = 0.35
-
-#         # Convolutional layers setup
-#         self.conv_layers = nn.ModuleList()
-#         self.poolings = []
-#         self.bns = nn.ModuleList()
-#         self.dropouts = nn.ModuleList()
-
-#         num_layers = trial.suggest_int(f"num_conv_layers", 3, 7)
-#         in_channels = 9  # Fixed input channel size
-
-        
-        
-#         ######################################################################################################
-#         # In length is 2 ** 10
-#         # Padding is set up so that the out length is always reduced by 1 / 2 ** out_length_reduction_exponent
-#         # The length of a kernel is: kernel + (dilation - 1) * (kernel_size - 1)
-#         # The max lenght of a kernel is 25 which is kernel_size = 7 and dilation = 4
-#         # The in lenght can never be less than 25
-#         # Since the in lenght is always a power of 2, the in lenght can be no less than 2 ** 5 = 32,
-#         # we need to make sure not to reduce the in lenght too much, we keep track of
-#         # how much we can still reduce the length by using length_reduction_power_left which is set to 5.
-#         ######################################################################################################
-#         length_reduction_exporent_remaining = 5
-#         in_length_exponent = 10
-#         for i in range(num_layers):  # Convolutional layers
-#             ###########################
-#             # In length is a power of 2
-#             ###########################
-#             if i == 0: 
-#                 out_channels = trial.suggest_int(f"conv_{i}_out_channels", 9, 9 * 48, step = 9)
-#                 groups = 9
-#             elif i == -1:
-#                 out_channels = trial.suggest_int(f"conv_{i}_out_channels", 1, 256)
-#                 groups = 1
-#             else:
-#                 out_channels = trial.suggest_int(f"conv_{i}_out_channels", 1, 512)
-#                 groups = 1
-#             # kernel_size = trial.suggest_int(f"conv_{i}_kernel_size", 3, 7, step=2)
-#             k = trial.suggest_int(f"conv_{i}_kernel_size_power", 1, 5)  # can safely change 5 to be anything
-#             kernel_size = 2 * k + 1
-#             dilation = trial.suggest_int(f"conv_{i}_dilation", 1, 4)
-#             out_length_reduction_exponent = trial.suggest_int(f"conv_{i}_out_length_reduction_exponent", 0, min(2, length_reduction_exporent_remaining))
-#             # conv_stride_length_exponent = trial.suggest_int(f"conv_{i}_stride_length_exponent", 0, out_length_reduction_exponent)
-#             conv_stride_length_exponent = out_length_reduction_exponent
-#             # Keep track of how much reducing we still can do
-#             length_reduction_exporent_remaining -= out_length_reduction_exponent
-#             in_length_exponent -= out_length_reduction_exponent
-#             # Set stride
-#             stride = 2 ** conv_stride_length_exponent
-#             # Padding is chosen so that out length is a power of 2
-#             # there is a floor in the formula. If we want to use more than 2 for out_length_reduction_exponent, we neen do caluclate the cases
-#             if (conv_stride_length_exponent == 2) and (((dilation * k) % 2) == 1):
-#                 padding = dilation * k - 1
-#             else:
-#                 padding = dilation * k
-                
-#             self.conv_layers.append(nn.Conv1d(in_channels, out_channels, kernel_size,stride, padding, dilation, groups))
-#             in_channels = out_channels  # Update in_channels for the next layer
-
-#             if conv_stride_length_exponent < out_length_reduction_exponent:
-#                 pooling_type = trial.suggest_int(f"layer_{i}_pooling_type", 0, 1)    # 1: max, 0: avg
-#                 pool_kernal_size_exponent = out_length_reduction_exponent - conv_stride_length_exponent
-#                 if pooling_type == 1:
-#                     self.poolings.append(nn.MaxPool1d(2 ** pool_kernal_size_exponent))
-#                 else:
-#                     self.poolings.append(nn.AvgPool1d(2 ** pool_kernal_size_exponent))
-#             else:
-#                 self.poolings.append(None)    #   No pooling in current layer
-
-            
-#             # Batch Normalization
-#             self.bns.append(nn.BatchNorm1d(in_channels))
-            
-#         # Max pooling layer
-#         # The kernel can be a power of two, up to the in lenght
-#         # In length of the output will be 2 ** out_length_exponent
-#         # and lenght can be 1, 2, 4, 8, 16, 32
-        
-#         kernel_exponent = trial.suggest_int(f"maxpool_kernel_exponent",length_reduction_exporent_remaining , in_length_exponent)
-#         kernel_size = 2 ** kernel_exponent
-#         in_length_exponent -= kernel_exponent
-        
-#         self.pool1 = nn.MaxPool1d(kernel_size=kernel_size)
-        
-        
-#         # The length right now should be 2 ** in_length_exponent, so we can be exact in our first lineal layer
-#         self.fc1 = nn.Linear(out_channels * 2 ** in_length_exponent, trial.suggest_int("fc1_out_features", 32, 256))
-#         # self.fc1 = nn.LazyLinear(trial.suggest_int("fc1_out_features", 64, 256))
-#         self.fc1_dropout = nn.Dropout(dropout_rate)  # Dropout after fc1
-#         self.fc2 = nn.Linear(self.fc1.out_features, trial.suggest_int("fc2_out_features", 32, 128))
-#         self.fc2_dropout = nn.Dropout(dropout_rate)  # Dropout after fc2
-#         self.fc3 = nn.Linear(self.fc2.out_features, 5)  # Output layer with 1 unit for binary classification
-
-#     def forward(self, x):
-#         # Apply convolutional layers with optional ReLU and fixed dropout
-#         for i, conv_layer in enumerate(self.conv_layers):
-#             x = conv_layer(x)
-#             x = self.bns[i](x)
-#             if self.poolings[i]:
-#                 x = self.poolings[i](x)
-#             x = F.relu(x)            
-
-#         # Optional max pooling after conv layers
-#         # if self.use_pool1:
-#         x = self.pool1(x)
-
-#         # Flatten for fully connected layers
-#         x = torch.flatten(x, 1)
-#         x = F.relu(self.fc1(x))
-#         x = self.fc1_dropout(x)
-#         x = F.relu(self.fc2(x))
-#         x = self.fc2_dropout(x)
-#         x = self.fc3(x)  # Output without activation for BCEWithLogitsLoss
-#         return x
-
+   
 class CustomNet(nn.Module):
     def __init__(self, trial):
         super(CustomNet, self).__init__()
@@ -251,7 +131,7 @@ class CustomNet(nn.Module):
             fc_input_size = fc_output_size
 
         # Output layer
-        self.fc = nn.Linear(fc_input_size, 17)   # Output layer
+        self.fc = nn.Linear(fc_input_size, 5)   # Output layer
 
         # Combine all layers
         self.conv_layers = nn.Sequential(*conv_layers)
@@ -326,6 +206,8 @@ def prepare_data_loaders(file_paths, labels, batch_size=64, num_workers=15):
     return loaders
 
 def objective(trial, dataloaders, study_name):
+    # Initialize GradScalar for mixed precision
+    scaler = GradScaler()
     # Device configuration
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -341,14 +223,14 @@ def objective(trial, dataloaders, study_name):
     logging.info(f'Model Summary:\n{model_summary_str}')
 
     # Define the optimizer and criterion
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.002)
     # optimizer = torch.optim.SGD(model.parameters(), lr = 0.1)
     # criterion = nn.BCEWithLogitsLoss(reduction = 'sum')
 
     # class_weights = torch.tensor([1, 98880 / 93713, 98880 / 54502, 98880 / 43391, 98880 / 32625], device = device)
     # class_weights.to(device)
     criterion = nn.CrossEntropyLoss(reduction = 'sum')
-    def train_epoch(model, dataloader, optimizer, criterion):
+    def train_epoch(model, dataloader, optimizer, criterion, scaler):
         model.train()
         train_loss = 0.0
         train_correct = 0
@@ -356,14 +238,19 @@ def objective(trial, dataloaders, study_name):
         for inputs, labels in dataloader:
             inputs, labels = inputs.to(device), labels.to(device)
 
-            # Forward pass
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)  # Apply .float() to labels
+            # Forward pass with mixed precision
+            with autocast():
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)  # Apply .float() to labels
 
             # Backward pass and optimization
+            # optimizer.zero_grad()
+            # loss.backward()
+            # optimizer.step()
             optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()    
 
             # Update progress
             train_loss += loss.item()
@@ -392,9 +279,10 @@ def objective(trial, dataloaders, study_name):
             for inputs, labels in dataloader:
                 inputs, labels = inputs.to(device), labels.to(device)
 
-                # Forward pass
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
+                # Forward pass with mixed precision
+                with autocast():
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)  # Apply .float() to labels
 
                 # Update progress
                 val_loss += loss.item()
@@ -428,9 +316,10 @@ def objective(trial, dataloaders, study_name):
             for inputs, labels in dataloader:
                 inputs, labels = inputs.to(device), labels.to(device)
 
-                # Forward pass
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
+                # Forward pass with mixed precision
+                with autocast():
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)  # Apply .float() to labels
 
                 # Update progress
                 test_loss += loss.item()
@@ -470,14 +359,8 @@ def objective(trial, dataloaders, study_name):
                         'SAMUS', 
                         'ICE_CLIMBERS', 
                         'GANONDORF', 
-                        'YOSHI', 
-                        'LUIGI', 
-                        'PIKACHU', 
-                        'DR_MARIO', 
-                        'NESS', 
-                        'LINK', 
-                        'MEWTWO',  ]
-            plt.figure(figsize=(1.5 * len(opponents), 1.5 * len(opponents)))
+                        'YOSHI', ]
+            plt.figure(figsize=(14, 14))
             sns.heatmap(cm, annot=True, fmt='f', cmap='Blues', xticklabels=opponents, yticklabels=opponents)
             plt.gca().invert_yaxis()
             plt.xlabel('Predicted')
@@ -502,7 +385,7 @@ def objective(trial, dataloaders, study_name):
     pbar = tqdm(total=epochs, desc="Epochs", position=0, leave=True)
 
     for epoch in range(epochs):
-        train_loss, train_accuracy = train_epoch(model, dataloaders['train'], optimizer, criterion)
+        train_loss, train_accuracy = train_epoch(model, dataloaders['train'], optimizer, criterion, scaler)
         val_loss, val_accuracy = validate_epoch(model, dataloaders['val'], criterion)
         
         # Early Stopping check and progress bar update
@@ -510,7 +393,6 @@ def objective(trial, dataloaders, study_name):
             best_val_acc = val_accuracy
         if (val_loss + min_delta) < best_val_loss:
             best_val_loss = val_loss
-            best_val_accuracy = val_accuracy
             epochs_no_improve = 0
         else:
             epochs_no_improve += 1
@@ -521,10 +403,10 @@ def objective(trial, dataloaders, study_name):
             epochs_overfit += 1
 
         # Update progress bar
-        pbar.set_postfix_str(f"Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_accuracy:.4f}")
+        pbar.set_postfix_str(f"Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_acc:.4f}")
         pbar.update(1)  # Move the progress bar by one epoch
         # Log Losses
-        logging.info(f'Epoch {epoch + 1}/{epochs} - Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_accuracy:.4f}')
+        logging.info(f'Epoch {epoch + 1}/{epochs} - Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_acc:.4f}')
 
         # Check early stopping condition
         if epochs_no_improve >= patience or epochs_overfit >= patience:
@@ -535,7 +417,6 @@ def objective(trial, dataloaders, study_name):
     # Evaluate model on test set after training is complete (if necessary)
     test_loss, test_accuracy = evaluate_test(model, dataloaders['test'], criterion, study_name)
     print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
-    logging.info(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
 
     pbar.close()  # Ensure the progress bar is closed
     gc.collect()
