@@ -293,6 +293,28 @@ def load_data(save_path):
 
     return file_paths, labels
 
+def load_data_with_mmap(save_path):
+    """
+    Loads file paths and labels using numpy.memmap.
+
+    Args:
+        save_path (str): Directory where the data is stored.
+
+    Returns:
+        tuple: A tuple containing memory-mapped arrays of file paths and labels.
+    """
+    # Define the paths for the memory-mapped files
+    file_paths_mmap_path = os.path.join(save_path, 'ranked_file_paths.dat')
+    labels_mmap_path = os.path.join(save_path, 'ranked_label_list.dat')
+
+    # Memory-map the saved arrays
+    # Mode 'r' opens the file in read-only mode
+    file_paths = np.memmap(file_paths_mmap_path, dtype='str', mode='r')
+    labels = np.memmap(labels_mmap_path, dtype=np.int16, mode='r')  # Adjust dtype accordingly
+
+    return file_paths, labels
+
+
 def prepare_data_loaders(file_paths, labels, batch_size=64, num_workers=15):
     """
     Prepares training, validation, and test data loaders.
@@ -564,7 +586,7 @@ def main():
     logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     save_path = 'C:/Users/jaspa/Grant ML/slp/data'
-    file_paths, labels = load_data(save_path)
+    file_paths, labels = load_data_with_mmap(save_path)
     loaders = prepare_data_loaders(file_paths, labels, batch_size = batch_size)
 
     study = optuna.create_study(study_name = study_name,
