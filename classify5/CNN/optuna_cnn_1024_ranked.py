@@ -55,127 +55,6 @@ class GameSegmentDataset(Dataset):
         segment_tensor = torch.from_numpy(segment).float()
         label_tensor = torch.tensor(self.labels[idx], dtype=torch.long)
         return segment_tensor, label_tensor
-    
-# class CustomNet(nn.Module):
-#     def __init__(self, trial):
-#         super(CustomNet, self).__init__()
-
-#         # Fixed dropout rate (not tuned by Optuna)
-#         dropout_rate = 0.35
-
-#         # Convolutional layers setup
-#         self.conv_layers = nn.ModuleList()
-#         self.poolings = []
-#         self.bns = nn.ModuleList()
-#         self.dropouts = nn.ModuleList()
-
-#         num_layers = trial.suggest_int(f"num_conv_layers", 3, 7)
-#         in_channels = 9  # Fixed input channel size
-
-        
-        
-#         ######################################################################################################
-#         # In length is 2 ** 10
-#         # Padding is set up so that the out length is always reduced by 1 / 2 ** out_length_reduction_exponent
-#         # The length of a kernel is: kernel + (dilation - 1) * (kernel_size - 1)
-#         # The max lenght of a kernel is 25 which is kernel_size = 7 and dilation = 4
-#         # The in lenght can never be less than 25
-#         # Since the in lenght is always a power of 2, the in lenght can be no less than 2 ** 5 = 32,
-#         # we need to make sure not to reduce the in lenght too much, we keep track of
-#         # how much we can still reduce the length by using length_reduction_power_left which is set to 5.
-#         ######################################################################################################
-#         length_reduction_exporent_remaining = 5
-#         in_length_exponent = 10
-#         for i in range(num_layers):  # Convolutional layers
-#             ###########################
-#             # In length is a power of 2
-#             ###########################
-#             if i == 0: 
-#                 out_channels = trial.suggest_int(f"conv_{i}_out_channels", 9, 9 * 48, step = 9)
-#                 groups = 9
-#             elif i == -1:
-#                 out_channels = trial.suggest_int(f"conv_{i}_out_channels", 1, 256)
-#                 groups = 1
-#             else:
-#                 out_channels = trial.suggest_int(f"conv_{i}_out_channels", 1, 512)
-#                 groups = 1
-#             # kernel_size = trial.suggest_int(f"conv_{i}_kernel_size", 3, 7, step=2)
-#             k = trial.suggest_int(f"conv_{i}_kernel_size_power", 1, 5)  # can safely change 5 to be anything
-#             kernel_size = 2 * k + 1
-#             dilation = trial.suggest_int(f"conv_{i}_dilation", 1, 4)
-#             out_length_reduction_exponent = trial.suggest_int(f"conv_{i}_out_length_reduction_exponent", 0, min(2, length_reduction_exporent_remaining))
-#             # conv_stride_length_exponent = trial.suggest_int(f"conv_{i}_stride_length_exponent", 0, out_length_reduction_exponent)
-#             conv_stride_length_exponent = out_length_reduction_exponent
-#             # Keep track of how much reducing we still can do
-#             length_reduction_exporent_remaining -= out_length_reduction_exponent
-#             in_length_exponent -= out_length_reduction_exponent
-#             # Set stride
-#             stride = 2 ** conv_stride_length_exponent
-#             # Padding is chosen so that out length is a power of 2
-#             # there is a floor in the formula. If we want to use more than 2 for out_length_reduction_exponent, we neen do caluclate the cases
-#             if (conv_stride_length_exponent == 2) and (((dilation * k) % 2) == 1):
-#                 padding = dilation * k - 1
-#             else:
-#                 padding = dilation * k
-                
-#             self.conv_layers.append(nn.Conv1d(in_channels, out_channels, kernel_size,stride, padding, dilation, groups))
-#             in_channels = out_channels  # Update in_channels for the next layer
-
-#             if conv_stride_length_exponent < out_length_reduction_exponent:
-#                 pooling_type = trial.suggest_int(f"layer_{i}_pooling_type", 0, 1)    # 1: max, 0: avg
-#                 pool_kernal_size_exponent = out_length_reduction_exponent - conv_stride_length_exponent
-#                 if pooling_type == 1:
-#                     self.poolings.append(nn.MaxPool1d(2 ** pool_kernal_size_exponent))
-#                 else:
-#                     self.poolings.append(nn.AvgPool1d(2 ** pool_kernal_size_exponent))
-#             else:
-#                 self.poolings.append(None)    #   No pooling in current layer
-
-            
-#             # Batch Normalization
-#             self.bns.append(nn.BatchNorm1d(in_channels))
-            
-#         # Max pooling layer
-#         # The kernel can be a power of two, up to the in lenght
-#         # In length of the output will be 2 ** out_length_exponent
-#         # and lenght can be 1, 2, 4, 8, 16, 32
-        
-#         kernel_exponent = trial.suggest_int(f"maxpool_kernel_exponent",length_reduction_exporent_remaining , in_length_exponent)
-#         kernel_size = 2 ** kernel_exponent
-#         in_length_exponent -= kernel_exponent
-        
-#         self.pool1 = nn.MaxPool1d(kernel_size=kernel_size)
-        
-        
-#         # The length right now should be 2 ** in_length_exponent, so we can be exact in our first lineal layer
-#         self.fc1 = nn.Linear(out_channels * 2 ** in_length_exponent, trial.suggest_int("fc1_out_features", 32, 256))
-#         # self.fc1 = nn.LazyLinear(trial.suggest_int("fc1_out_features", 64, 256))
-#         self.fc1_dropout = nn.Dropout(dropout_rate)  # Dropout after fc1
-#         self.fc2 = nn.Linear(self.fc1.out_features, trial.suggest_int("fc2_out_features", 32, 128))
-#         self.fc2_dropout = nn.Dropout(dropout_rate)  # Dropout after fc2
-#         self.fc3 = nn.Linear(self.fc2.out_features, 5)  # Output layer with 1 unit for binary classification
-
-#     def forward(self, x):
-#         # Apply convolutional layers with optional ReLU and fixed dropout
-#         for i, conv_layer in enumerate(self.conv_layers):
-#             x = conv_layer(x)
-#             x = self.bns[i](x)
-#             if self.poolings[i]:
-#                 x = self.poolings[i](x)
-#             x = F.relu(x)            
-
-#         # Optional max pooling after conv layers
-#         # if self.use_pool1:
-#         x = self.pool1(x)
-
-#         # Flatten for fully connected layers
-#         x = torch.flatten(x, 1)
-#         x = F.relu(self.fc1(x))
-#         x = self.fc1_dropout(x)
-#         x = F.relu(self.fc2(x))
-#         x = self.fc2_dropout(x)
-#         x = self.fc3(x)  # Output without activation for BCEWithLogitsLoss
-#         return x
 
 class CustomNet(nn.Module):
     def __init__(self, trial):
@@ -197,9 +76,9 @@ class CustomNet(nn.Module):
             in_channels, out_channels_1, kernel_size_1,
             stride=stride_1, padding=padding_1, groups=in_channels
         )
-        # self.pool1 = nn.MaxPool1d(2)
+        
         self.batch_norm1 = nn.LazyBatchNorm1d()
-        self.dropout1 = nn.Dropout(dropout_rate)
+        self.dropout1 = nn.Dropout1d(dropout_rate)
 
         # Define the rest of the convolution layers
         conv_layers = []
@@ -219,9 +98,8 @@ class CustomNet(nn.Module):
                 stride=stride_i, padding=padding_i
             ))
             conv_layers.append(nn.ReLU())
-            # conv_layers.append(nn.MaxPool1d(2))
             conv_layers.append(nn.LazyBatchNorm1d(out_channels_i))
-            conv_layers.append(nn.Dropout(dropout_rate))
+            conv_layers.append(nn.Dropout1d(dropout_rate))
             in_channels = out_channels_i
             if stride_i > 1:
                 stride_count += 1
@@ -251,7 +129,7 @@ class CustomNet(nn.Module):
             fc_input_size = fc_output_size
 
         # Output layer
-        self.fc = nn.Linear(fc_input_size, 17)   # Output layer
+        self.fc = nn.Linear(fc_input_size, 23)   # Output layer
 
         # Combine all layers
         self.conv_layers = nn.Sequential(*conv_layers)
@@ -259,7 +137,6 @@ class CustomNet(nn.Module):
 
     def forward(self, x):
         x = self.conv1(x)
-        # x = self.pool1(x)
         x = self.batch_norm1(x)
         x = F.relu(x)
         x = self.dropout1(x)
@@ -498,14 +375,20 @@ def objective(trial, dataloaders, study_name):
                         'DR_MARIO', 
                         'NESS', 
                         'LINK', 
-                        'MEWTWO',  ]
+                        'MEWTWO', 
+                        'GAME_AND_WATCH', 
+                        'DONKEY_KONG', 
+                        'YOUNG_LINK', 
+                        'MARIO', 
+                        'ROY', 
+                        'BOWSER',   ]
             plt.figure(figsize=(1.5 * len(opponents), 1.5 * len(opponents)))
             sns.heatmap(cm, annot=True, fmt='f', cmap='Blues', xticklabels=opponents, yticklabels=opponents)
             plt.gca().invert_yaxis()
             plt.xlabel('Predicted')
             plt.ylabel('True')
             plt.title('Confusion Matrix')
-            plt.savefig(confusion_matrix_path + current_datetime_string + ' Confusion Matrix.png')
+            plt.savefig(confusion_matrix_path + current_datetime_string + ' Confusion Matrix (pred).png')
 
             return test_loss, test_accuracy
                 
@@ -578,7 +461,7 @@ def main():
     current_datetime_string = current_datetime_string.replace(":", "-")
     
     # Set Some Variables
-    study_name = current_datetime_string + "Basic CNN - Classify Top 11 Characters"
+    study_name = current_datetime_string + "Basic CNN - Classify Top 23 Characters"
     batch_size = 256
 
     # Set up logging file
@@ -586,7 +469,7 @@ def main():
     logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     save_path = 'C:/Users/jaspa/Grant ML/slp/data'
-    file_paths, labels = load_data_with_mmap(save_path)
+    file_paths, labels = load_data(save_path)
     loaders = prepare_data_loaders(file_paths, labels, batch_size = batch_size)
 
     study = optuna.create_study(study_name = study_name,
