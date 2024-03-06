@@ -77,8 +77,9 @@ class CustomNet(nn.Module):
             stride=stride_1, padding=padding_1, groups=in_channels
         )
         
+        
         self.batch_norm1 = nn.LazyBatchNorm1d()
-        self.dropout1 = nn.Dropout(dropout_rate)
+        self.dropout1 = nn.Dropout1d(dropout_rate)
 
         # Define the rest of the convolution layers
         conv_layers = []
@@ -99,7 +100,7 @@ class CustomNet(nn.Module):
             ))
             conv_layers.append(nn.ReLU())
             conv_layers.append(nn.LazyBatchNorm1d(out_channels_i))
-            conv_layers.append(nn.Dropout(dropout_rate))
+            conv_layers.append(nn.Dropout1d(dropout_rate))
             in_channels = out_channels_i
             if stride_i > 1:
                 stride_count += 1
