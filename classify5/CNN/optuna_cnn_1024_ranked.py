@@ -78,7 +78,7 @@ class CustomNet(nn.Module):
         )
         
         self.batch_norm1 = nn.LazyBatchNorm1d()
-        self.dropout1 = nn.Dropout1d(dropout_rate)
+        self.dropout1 = nn.Dropout(dropout_rate)
 
         # Define the rest of the convolution layers
         conv_layers = []
@@ -99,7 +99,7 @@ class CustomNet(nn.Module):
             ))
             conv_layers.append(nn.ReLU())
             conv_layers.append(nn.LazyBatchNorm1d(out_channels_i))
-            conv_layers.append(nn.Dropout1d(dropout_rate))
+            conv_layers.append(nn.Dropout(dropout_rate))
             in_channels = out_channels_i
             if stride_i > 1:
                 stride_count += 1
@@ -381,7 +381,8 @@ def objective(trial, dataloaders, study_name):
                         'YOUNG_LINK', 
                         'MARIO', 
                         'ROY', 
-                        'BOWSER',   ]
+                        'BOWSER',   
+                        ]
             plt.figure(figsize=(1.5 * len(opponents), 1.5 * len(opponents)))
             sns.heatmap(cm, annot=True, fmt='f', cmap='Blues', xticklabels=opponents, yticklabels=opponents)
             plt.gca().invert_yaxis()
@@ -393,10 +394,10 @@ def objective(trial, dataloaders, study_name):
             return test_loss, test_accuracy
                 
     # Training loop with early stopping and tqdm progress bar
-    patience = 8
-    epochs = 100
+    patience = 15
+    epochs = 200
     min_delta = 0.0001
-    min_overfit = .0005
+    min_overfit = .005
 
     best_val_loss = float('inf')
     best_val_acc = 0.0
