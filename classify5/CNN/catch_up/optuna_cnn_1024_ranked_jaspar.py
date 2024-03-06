@@ -4,7 +4,6 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torch.optim import Adam
 from torchsummary import summary
-from torch.cuda.amp import GradScaler, autocast
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
@@ -56,7 +55,8 @@ class GameSegmentDataset(Dataset):
         segment_tensor = torch.from_numpy(segment).float()
         label_tensor = torch.tensor(self.labels[idx], dtype=torch.long)
         return segment_tensor, label_tensor
-   
+
+
 class CustomNet(nn.Module):
     def __init__(self, trial):
         super(CustomNet, self).__init__()
@@ -173,6 +173,28 @@ def load_data(save_path):
 
     return file_paths, labels
 
+def load_data_with_mmap(save_path):
+    """
+    Loads file paths and labels using numpy.memmap.
+
+    Args:
+        save_path (str): Directory where the data is stored.
+
+    Returns:
+        tuple: A tuple containing memory-mapped arrays of file paths and labels.
+    """
+    # Define the paths for the memory-mapped files
+    file_paths_mmap_path = os.path.join(save_path, 'ranked_file_paths.dat')
+    labels_mmap_path = os.path.join(save_path, 'ranked_label_list.dat')
+
+    # Memory-map the saved arrays
+    # Mode 'r' opens the file in read-only mode
+    file_paths = np.memmap(file_paths_mmap_path, dtype='str', mode='r')
+    labels = np.memmap(labels_mmap_path, dtype=np.int16, mode='r')  # Adjust dtype accordingly
+
+    return file_paths, labels
+
+
 def prepare_data_loaders(file_paths, labels, batch_size=64, num_workers=15):
     """
     Prepares training, validation, and test data loaders.
@@ -206,8 +228,6 @@ def prepare_data_loaders(file_paths, labels, batch_size=64, num_workers=15):
     return loaders
 
 def objective(trial, dataloaders, study_name):
-    # Initialize GradScalar for mixed precision
-    scaler = GradScaler()
     # Device configuration
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -230,7 +250,7 @@ def objective(trial, dataloaders, study_name):
     # class_weights = torch.tensor([1, 98880 / 93713, 98880 / 54502, 98880 / 43391, 98880 / 32625], device = device)
     # class_weights.to(device)
     criterion = nn.CrossEntropyLoss(reduction = 'sum')
-    def train_epoch(model, dataloader, optimizer, criterion, scaler):
+    def train_epoch(model, dataloader, optimizer, criterion):
         model.train()
         train_loss = 0.0
         train_correct = 0
@@ -238,19 +258,14 @@ def objective(trial, dataloaders, study_name):
         for inputs, labels in dataloader:
             inputs, labels = inputs.to(device), labels.to(device)
 
-            # Forward pass with mixed precision
-            with autocast():
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)  # Apply .float() to labels
+            # Forward pass
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)  # Apply .float() to labels
 
             # Backward pass and optimization
-            # optimizer.zero_grad()
-            # loss.backward()
-            # optimizer.step()
             optimizer.zero_grad()
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()    
+            loss.backward()
+            optimizer.step()
 
             # Update progress
             train_loss += loss.item()
@@ -279,10 +294,9 @@ def objective(trial, dataloaders, study_name):
             for inputs, labels in dataloader:
                 inputs, labels = inputs.to(device), labels.to(device)
 
-                # Forward pass with mixed precision
-                with autocast():
-                    outputs = model(inputs)
-                    loss = criterion(outputs, labels)  # Apply .float() to labels
+                # Forward pass
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
 
                 # Update progress
                 val_loss += loss.item()
@@ -316,9 +330,9 @@ def objective(trial, dataloaders, study_name):
             for inputs, labels in dataloader:
                 inputs, labels = inputs.to(device), labels.to(device)
 
-                with autocast():
-                    outputs = model(inputs)
-                    loss = criterion(outputs, labels)  # Apply .float() to labels
+                # Forward pass
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
 
                 # Update progress
                 test_loss += loss.item()
@@ -347,7 +361,7 @@ def objective(trial, dataloaders, study_name):
             current_datetime_string = current_datetime.strftime("%Y-%m-%d %H:%M:%S ")
             current_datetime_string = current_datetime_string.replace(":", "-")
 
-           # Plot confusion matrix
+            # Plot confusion matrix
             opponents = ['FOX', 
                         'FALCO', 
                         'MARTH', 
@@ -390,7 +404,7 @@ def objective(trial, dataloaders, study_name):
     pbar = tqdm(total=epochs, desc="Epochs", position=0, leave=True)
 
     for epoch in range(epochs):
-        train_loss, train_accuracy = train_epoch(model, dataloaders['train'], optimizer, criterion, scaler)
+        train_loss, train_accuracy = train_epoch(model, dataloaders['train'], optimizer, criterion)
         val_loss, val_accuracy = validate_epoch(model, dataloaders['val'], criterion)
         
         # Early Stopping check and progress bar update
@@ -398,6 +412,7 @@ def objective(trial, dataloaders, study_name):
             best_val_acc = val_accuracy
         if (val_loss + min_delta) < best_val_loss:
             best_val_loss = val_loss
+            best_val_accuracy = val_accuracy
             epochs_no_improve = 0
         else:
             epochs_no_improve += 1
@@ -408,10 +423,10 @@ def objective(trial, dataloaders, study_name):
             epochs_overfit += 1
 
         # Update progress bar
-        pbar.set_postfix_str(f"Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_acc:.4f}")
+        pbar.set_postfix_str(f"Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_accuracy:.4f}")
         pbar.update(1)  # Move the progress bar by one epoch
         # Log Losses
-        logging.info(f'Epoch {epoch + 1}/{epochs} - Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_acc:.4f}')
+        logging.info(f'Epoch {epoch + 1}/{epochs} - Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_accuracy:.4f}')
 
         # Check early stopping condition
         if epochs_no_improve >= patience or epochs_overfit >= patience:
@@ -422,6 +437,7 @@ def objective(trial, dataloaders, study_name):
     # Evaluate model on test set after training is complete (if necessary)
     test_loss, test_accuracy = evaluate_test(model, dataloaders['test'], criterion, study_name)
     print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
+    logging.info(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
 
     pbar.close()  # Ensure the progress bar is closed
     gc.collect()

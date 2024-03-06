@@ -315,7 +315,7 @@ def load_data_with_mmap(save_path):
     return file_paths, labels
 
 
-def prepare_data_loaders(file_paths, labels, batch_size=64, num_workers=15):
+def prepare_data_loaders(file_paths, labels, batch_size, num_workers=15):
     """
     Prepares training, validation, and test data loaders.
 
@@ -579,14 +579,14 @@ def main():
     
     # Set Some Variables
     study_name = current_datetime_string + "Basic CNN - Classify Top 11 Characters"
-    batch_size = 256
+    batch_size = 256*8
 
     # Set up logging file
     log_file = 'data\\classify5\\logs\\' + study_name + ' Log.txt'
     logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     save_path = 'C:/Users/jaspa/Grant ML/slp/data'
-    file_paths, labels = load_data_with_mmap(save_path)
+    file_paths, labels = load_data(save_path)
     loaders = prepare_data_loaders(file_paths, labels, batch_size = batch_size)
 
     study = optuna.create_study(study_name = study_name,

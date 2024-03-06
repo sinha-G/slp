@@ -9,6 +9,8 @@ import pickle
 import os
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
+import gc
+
 
 class GameSegmentDataset(Dataset):
     """
@@ -50,21 +52,87 @@ class SimpleCNN(nn.Module):
     """
     def __init__(self):
         super(SimpleCNN, self).__init__()
-        self.conv1 = nn.LazyConv1d(32, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv1d(32, 64, kernel_size=3, stride=1, padding=1)
-        self.pool = nn.MaxPool1d(2, 2)
-        self.fc1 = nn.LazyLinear(128)  # LazyLinear allows deferring the determination of in_features
-        self.fc2 = nn.Linear(128,17)  # Assuming 5 classes for classification
+        dropout_rate = 0.35
 
+
+        self.conv1 = nn.LazyConv1d(out_channels = 135, kernel_size = 6, stride = 2, padding = 1, groups = 9)
+        self.batch_norm1 = nn.LazyBatchNorm1d()
+        self.dropout1 = nn.Dropout1d(dropout_rate)
+
+        self.conv2 = nn.LazyConv1d(out_channels = 94, kernel_size = 5, stride = 2, padding = 3)
+        self.batch_norm2 = nn.LazyBatchNorm1d()
+        self.dropout2 = nn.Dropout1d(dropout_rate)
+        
+        self.conv3 = nn.LazyConv1d(out_channels = 95, kernel_size = 7, stride = 2, padding = 2)
+        self.batch_norm3 = nn.LazyBatchNorm1d()
+        self.dropout3 = nn.Dropout1d(dropout_rate)
+        
+        self.conv4 = nn.LazyConv1d(out_channels = 86, kernel_size = 7, stride = 1, padding = 2)
+        self.batch_norm4 = nn.LazyBatchNorm1d()
+        self.dropout4 = nn.Dropout1d(dropout_rate)
+        
+        self.conv5 = nn.LazyConv1d(out_channels = 111, kernel_size = 7, stride = 1, padding = 1)
+        self.batch_norm5 = nn.LazyBatchNorm1d()
+        self.dropout5 = nn.Dropout1d(dropout_rate)
+        
+        self.conv6 = nn.LazyConv1d(out_channels = 112, kernel_size = 2, stride = 1, padding = 3)
+        self.batch_norm6 = nn.LazyBatchNorm1d()
+        self.dropout6 = nn.Dropout1d(dropout_rate)
+        
+        self.conv7 = nn.LazyConv1d(out_channels = 18, kernel_size = 7, stride = 1, padding = 1)
+        self.batch_norm7 = nn.LazyBatchNorm1d()
+        self.dropout7 = nn.Dropout1d(dropout_rate)
+        
+        self.fc8 = nn.LazyLinear(out_features=216)
+        self.dropout8 = nn.Dropout(dropout_rate)
+        
+        self.fc9 = nn.LazyLinear(out_features=17)
+        
     def forward(self, x):
         """Defines the forward pass of the model."""
-        x = F.relu(self.conv1(x))
-        x = self.pool(x)
-        x = F.relu(self.conv2(x))
-        x = self.pool(x)
-        x = torch.flatten(x, 1)  # Flatten for the fully connected layer
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = self.conv1(x)
+        x = self.batch_norm1(x)
+        x = F.relu(x)
+        x = self.dropout1(x)
+        
+        x = self.conv2(x)
+        x = self.batch_norm2(x)
+        x = F.relu(x)
+        x = self.dropout2(x)
+        
+        x = self.conv3(x)
+        x = self.batch_norm3(x)
+        x = F.relu(x)
+        x = self.dropout3(x)
+        
+        x = self.conv4(x)
+        x = self.batch_norm4(x)
+        x = F.relu(x)
+        x = self.dropout4(x)
+        
+        x = self.conv5(x)
+        x = self.batch_norm5(x)
+        x = F.relu(x)
+        x = self.dropout5(x)
+        
+        x = self.conv6(x)
+        x = self.batch_norm6(x)
+        x = F.relu(x)
+        x = self.dropout6(x)
+        
+        x = self.conv7(x)
+        x = self.batch_norm7(x)
+        x = F.relu(x)
+        x = self.dropout7(x)
+        
+        x = torch.flatten(x, 1)
+        
+        x = self.fc8(x)
+        x = F.relu(x)
+        x = self.dropout8(x)
+        
+        x = self.fc9(x)
+
         return x
 
 def load_data(save_path):
@@ -85,7 +153,9 @@ def load_data(save_path):
 
     return file_paths, labels
 
-def prepare_data_loaders(file_paths, labels, batch_size=64, num_workers=15):
+
+
+def prepare_data_loaders(file_paths, labels, batch_size, num_workers):
     """
     Prepares training, validation, and test data loaders.
 
@@ -117,7 +187,7 @@ def prepare_data_loaders(file_paths, labels, batch_size=64, num_workers=15):
     }
     return loaders
 
-def train_model(model, criterion, optimizer, loaders, device, num_epochs=10):
+def train_model(model, criterion, optimizer, loaders, device, num_epochs=20):
     """
     Trains the model.
 
@@ -184,13 +254,17 @@ def main():
     # Example usage
     save_path = 'C:/Users/jaspa/Grant ML/slp/data'
     file_paths, labels = load_data(save_path)
-    loaders = prepare_data_loaders(file_paths, labels,batch_size=64,num_workers=16)
+    # multiplier = 2**3
+    multiplier = 2
+    loaders = prepare_data_loaders(file_paths, labels,batch_size=64*multiplier,num_workers=15)
 
     model = SimpleCNN().to('cuda')  # Assuming the use of a GPU
-    criterion = nn.CrossEntropyLoss()
-    optimizer = Adam(model.parameters(), lr=0.001)
-
-    train_model(model, criterion, optimizer, loaders, 'cuda')
+    # model = torch.compile(SimpleCNN()).to('cuda')
+    criterion = nn.CrossEntropyLoss(reduction = 'sum')
+    optimizer = Adam(model.parameters(), lr=0.001*multiplier)
+    # gc.collect()
+    # torch.cuda.empty_cache()
+    train_model(model, criterion, optimizer, loaders, 'cuda',2)
 
 if __name__ == '__main__':
     main()
