@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torch.optim import Adam
 from torchsummary import summary
+from torch.cuda.amp import GradScaler, autocast
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
@@ -19,6 +20,7 @@ import pymysql
 from prettytable import PrettyTable
 import pandas as pd
 
+
 from datetime import datetime
 import os
 import gc
@@ -29,10 +31,11 @@ class CustomNet(nn.Module):
         super(CustomNet, self).__init__()
         self.trial = trial
         # Fixed dropout rate (not tuned by Optuna)
-        dropout_rate = trial.suggest_float("dropout_rate", 0.1, 0.7)
+        # dropout_rate = trial.suggest_float("dropout_rate", 0.1, 0.7)
+        dropout_rate = .35
 
-        # num_layers = trial.suggest_int("num_conv_layers", 2, 5)
-        num_layers = 6
+        num_layers = trial.suggest_int("num_conv_layers", 2, 5)
+        # num_layers = 6
         in_channels = 9  # Fixed input channel size
 
         # Define the first convolution layer with depthwise convolution
@@ -81,7 +84,7 @@ class CustomNet(nn.Module):
         fc_input_size = out_channels_i * (1024 // (2 ** num_layers))
         fc_output_size = trial.suggest_int("fc_output_size_0", 64, 256)
         fc_layers = [
-            nn.LazyLinear(fc_input_size, fc_output_size),
+            nn.LazyLinear( fc_output_size),
             nn.ReLU(),
             nn.LazyBatchNorm1d(),
             nn.Dropout(dropout_rate)
@@ -89,10 +92,10 @@ class CustomNet(nn.Module):
 
         # Define the rest of the fully connected layers
         # for i in range(1, trial.suggest_int("num_fc_layers", 1, 3)):
-        for i in range(3):    
-            fc_output_size = trial.suggest_int(f"fc_output_size_{i}", 64, 128)
+        for i in range(1,3):    
+            fc_output_size = trial.suggest_int(f"fc_output_size_{i}", 64, 256)
             fc_layers.extend([
-                nn.Linear(fc_input_size, fc_output_size),
+                nn.LazyLinear( fc_output_size),
                 nn.ReLU(),
                 nn.LazyBatchNorm1d(),
                 nn.Dropout(dropout_rate)
@@ -115,7 +118,8 @@ class CustomNet(nn.Module):
         x = self.conv_layers(x)
 
         # Reshape for fully connected layers
-        x = x.view(x.size(0), -1)
+        # x = x.view(x.size(0), -1)
+        x = torch.flatten(x, 1)
 
         x = self.fc_layers(x)
 
@@ -267,16 +271,17 @@ def objective(trial, dataloaders, study_name):
     summary(model, input_size=inputs.size()[1:], device='cuda' if torch.cuda.is_available() else 'cpu')
     model_summary_str = str(model)
     logging.info(f'Model Summary:\n{model_summary_str}')
-
+    
+    scaler = GradScaler()
     # Define the optimizer and criterion
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
     # optimizer = torch.optim.SGD(model.parameters(), lr = 0.1)
     # criterion = nn.BCEWithLogitsLoss(reduction = 'sum')
 
     # class_weights = torch.tensor([1, 98880 / 93713, 98880 / 54502, 98880 / 43391, 98880 / 32625], device = device)
     # class_weights.to(device)
     criterion = nn.CrossEntropyLoss(reduction = 'sum')
-    def train_epoch(model, dataloader, optimizer, criterion):
+    def train_epoch(model, dataloader, optimizer, criterion, scaler):
         model.train()
         train_loss = 0.0
         train_correct = 0
@@ -284,7 +289,8 @@ def objective(trial, dataloaders, study_name):
         for inputs, labels in dataloader:
             inputs, labels = inputs.to(device), labels.to(device)
 
-            # Forward pass
+ # Forward pass with mixed precision
+            # with autocast():
             outputs = model(inputs)
             loss = criterion(outputs, labels)  # Apply .float() to labels
 
@@ -292,6 +298,10 @@ def objective(trial, dataloaders, study_name):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            # optimizer.zero_grad()
+            # scaler.scale(loss).backward()
+            # scaler.step(optimizer)
+            # scaler.update()    
 
             # Update progress
             train_loss += loss.item()
@@ -320,9 +330,10 @@ def objective(trial, dataloaders, study_name):
             for inputs, labels in dataloader:
                 inputs, labels = inputs.to(device), labels.to(device)
 
-                # Forward pass
+                # Forward pass with mixed precision
+                # with autocast():
                 outputs = model(inputs)
-                loss = criterion(outputs, labels)
+                loss = criterion(outputs, labels)  # Apply .float() to labels
 
                 # Update progress
                 val_loss += loss.item()
@@ -356,9 +367,9 @@ def objective(trial, dataloaders, study_name):
             for inputs, labels in dataloader:
                 inputs, labels = inputs.to(device), labels.to(device)
 
-                # Forward pass
+                # with autocast():
                 outputs = model(inputs)
-                loss = criterion(outputs, labels)
+                loss = criterion(outputs, labels)  # Apply .float() to labels
 
                 # Update progress
                 test_loss += loss.item()
@@ -427,8 +438,8 @@ def objective(trial, dataloaders, study_name):
             return test_loss, test_accuracy
                 
     # Training loop with early stopping and tqdm progress bar
-    patience = 15
-    epochs = 200
+    patience = 1
+    epochs = 50
     min_delta = 0.0001
     min_overfit = .1
 
@@ -441,7 +452,7 @@ def objective(trial, dataloaders, study_name):
     pbar = tqdm(total=epochs, desc="Epochs", position=0, leave=True)
 
     for epoch in range(epochs):
-        train_loss, train_accuracy = train_epoch(model, dataloaders['train'], optimizer, criterion)
+        train_loss, train_accuracy = train_epoch(model, dataloaders['train'], optimizer, criterion,scaler)
         val_loss, val_accuracy = validate_epoch(model, dataloaders['val'], criterion)
         
         # Early Stopping check and progress bar update
