@@ -29,9 +29,10 @@ class CustomNet(nn.Module):
         super(CustomNet, self).__init__()
         self.trial = trial
         # Fixed dropout rate (not tuned by Optuna)
-        dropout_rate = 0.5
+        dropout_rate = trial.suggest_float("dropout_rate", 0.1, 0.7)
 
-        num_layers = trial.suggest_int("num_conv_layers", 2, 5)
+        # num_layers = trial.suggest_int("num_conv_layers", 2, 5)
+        num_layers = 6
         in_channels = 9  # Fixed input channel size
 
         # Define the first convolution layer with depthwise convolution
@@ -87,8 +88,9 @@ class CustomNet(nn.Module):
         ]
 
         # Define the rest of the fully connected layers
-        for i in range(1, trial.suggest_int("num_fc_layers", 1, 3)):
-            fc_output_size = trial.suggest_int(f"fc_output_size_{i}", 64, 256)
+        # for i in range(1, trial.suggest_int("num_fc_layers", 1, 3)):
+        for i in range(3):    
+            fc_output_size = trial.suggest_int(f"fc_output_size_{i}", 64, 128)
             fc_layers.extend([
                 nn.Linear(fc_input_size, fc_output_size),
                 nn.ReLU(),
@@ -98,7 +100,7 @@ class CustomNet(nn.Module):
             fc_input_size = fc_output_size
 
         # Output layer
-        self.fc = nn.Linear(fc_input_size, 3)   # Output layer
+        self.fc = nn.Linear(fc_input_size, 26)   # Output layer
 
         # Combine all layers
         self.conv_layers = nn.Sequential(*conv_layers)
@@ -125,7 +127,7 @@ class GameSegmentDataset(Dataset):
     """
     Custom dataset for loading game segments from compressed numpy files.
     """
-    def __init__(self, file_paths, labels, segment_shifts, segment_indices, transform=None):
+    def __init__(self, df, transform=None):
         """
         Initializes the dataset.
 
@@ -134,10 +136,17 @@ class GameSegmentDataset(Dataset):
             labels (list): List of labels corresponding to each file.
             transform (callable, optional): Optional transform to be applied on a sample.
         """
-        self.file_paths = file_paths
-        self.labels = labels
-        self.segment_shifts = segment_shifts
-        self.segment_indices = segment_indices
+        
+        # Extract 'file_paths' + 'file' and 'labels' columns
+        # file_paths = (df['path'] + '\\' + df['file']).tolist()
+        # labels = df['labels'].tolist()
+        # segment_shifts = df['segment_shift'].tolist()
+        # segment_indices = df['segment_index'].tolist()
+    
+        self.file_paths = (df['path'] + '\\' + df['file']).tolist()
+        self.labels = df['labels'].tolist()
+        self.segment_shifts = df['segment_shift'].tolist()
+        self.segment_indices = df['segment_index'].tolist()
         self.transform = transform
 
     def __len__(self):
@@ -174,37 +183,43 @@ def load_data(save_path):
         tuple: A tuple containing arrays of file paths and labels.
     """
     # Load the feather file
-    df = pd.read_feather('C:/Users/jaspa/Grant ML/slp/data/sample_test_df.feather')
-
-    # Specify what characters to use in classification here
-    characters_to_keep = ['FOX', 
-                        #'FALCO', 
-                        #'MARTH', 
-                        'SHEIK', 
-                        #'CAPTAIN_FALCON',
-                        'YOSHI',
-                        ]
+    test_df = pd.read_feather('C:/Users/jaspa/Grant ML/slp/data/sample_test_df.feather')
+    train_df = pd.read_feather('C:/Users/jaspa/Grant ML/slp/data/sample_train_df.feather')
+    val_df = pd.read_feather('C:/Users/jaspa/Grant ML/slp/data/sample_val_df.feather')
     
-    df = df[df['character'].isin(characters_to_keep)]
 
+    # # Specify what characters to use in classification here
+    # characters_to_keep = ['FOX', 
+    #                     #'FALCO', 
+    #                     #'MARTH', 
+    #                     'SHEIK', 
+    #                     #'CAPTAIN_FALCON',
+    #                     'YOSHI',
+    #                     ]
+    
+    # test_df = test_df[test_df['character'].isin(characters_to_keep)]
+    # train_df = train_df[train_df['character'].isin(characters_to_keep)]
+    # val_df = val_df[val_df['character'].isin(characters_to_keep)]
 
-    # Extract 'file_paths' + 'file' and 'labels' columns
-    file_paths = (df['path'] + '\\' + df['file']).tolist()
-    labels = df['labels'].tolist()
-    segment_shifts = df['segment_shift'].tolist()
-    segment_indices = df['segment_index'].tolist()
+    # # Extract 'file_paths' + 'file' and 'labels' columns
+    # # file_paths = (df['path'] + '\\' + df['file']).tolist()
+    # # labels = df['labels'].tolist()
+    # # segment_shifts = df['segment_shift'].tolist()
+    # # segment_indices = df['segment_index'].tolist()
 
-    # Reduce the labels to be [0, 1, ..., len(characters_to_keep) - 1]
-    label_encoder = LabelEncoder()
-    label_encoder.fit(labels)
-    labels = label_encoder.transform(labels)
+    # # Reduce the labels to be [0, 1, ..., len(characters_to_keep) - 1]
+    # label_encoder = LabelEncoder()
+    # label_encoder.fit(test_df['labels'])
+    # test_df['labels'] = label_encoder.transform(test_df['labels'])
+    # train_df['labels'] = label_encoder.transform(train_df['labels'])
+    # val_df['labels'] = label_encoder.transform(val_df['labels'])
 
-    logging.info(df)
-    logging.info(labels)
+    # logging.info(df)
+    # logging.info(labels)
 
-    return file_paths, labels, segment_shifts, segment_indices
+    return train_df, val_df, test_df
 
-def prepare_data_loaders(file_paths, labels, segment_shifts, segment_indices, batch_size, num_workers = 15):
+def prepare_data_loaders(train_df, val_df, test_df, batch_size, num_workers = 15):
     """
     Prepares training, validation, and test data loaders.
 
@@ -220,15 +235,15 @@ def prepare_data_loaders(file_paths, labels, segment_shifts, segment_indices, ba
         dict: A dictionary containing 'train', 'val', and 'test' DataLoaders.
     """
     # Split the dataset into training, validation, and test sets
-    file_paths_train, file_paths_temp, labels_train, labels_temp, segment_shifts_train, segment_shifts_temp, segment_indices_train, segment_indices_temp = train_test_split(
-        file_paths, labels, segment_shifts, segment_indices, test_size=0.3, stratify=labels)
-    file_paths_val, file_paths_test, labels_val, labels_test, segment_shifts_val, segment_shifts_test, segment_indices_val, segment_indices_test = train_test_split(
-        file_paths_temp, labels_temp, segment_shifts_temp, segment_indices_temp, test_size=0.5, stratify=labels_temp)
+    # file_paths_train, file_paths_temp, labels_train, labels_temp, segment_shifts_train, segment_shifts_temp, segment_indices_train, segment_indices_temp = train_test_split(
+    #     file_paths, labels, segment_shifts, segment_indices, test_size=0.3, stratify=labels)
+    # file_paths_val, file_paths_test, labels_val, labels_test, segment_shifts_val, segment_shifts_test, segment_indices_val, segment_indices_test = train_test_split(
+    #     file_paths_temp, labels_temp, segment_shifts_temp, segment_indices_temp, test_size=0.5, stratify=labels_temp)
 
     # Initialize datasets
-    train_dataset = GameSegmentDataset(file_paths_train, labels_train, segment_shifts_train, segment_indices_train)
-    val_dataset = GameSegmentDataset(file_paths_val, labels_val, segment_shifts_val, segment_indices_val)
-    test_dataset = GameSegmentDataset(file_paths_test, labels_test, segment_shifts_test, segment_indices_test)
+    train_dataset = GameSegmentDataset(train_df)
+    val_dataset = GameSegmentDataset(val_df)
+    test_dataset = GameSegmentDataset(test_df)
 
     # Initialize data loaders
     loaders = {
@@ -373,13 +388,34 @@ def objective(trial, dataloaders, study_name):
             current_datetime_string = current_datetime_string.replace(":", "-")
 
             # Plot confusion matrix
-            opponents = ['FOX', 
-                        #'FALCO', 
-                        #'MARTH', 
-                        'SHEIK', 
-                        #'CAPTAIN_FALCON', 
-                        'YOSHI',
-                        ]
+            opponents = [
+                'FOX', 
+                'FALCO', 
+                'MARTH', 
+                'SHEIK', 
+                'CAPTAIN_FALCON', 
+                'PEACH', 
+                'JIGGLYPUFF', 
+                'SAMUS', 
+                'ICE_CLIMBERS', 
+                'GANONDORF', 
+                'YOSHI', 
+                'LUIGI', 
+                'PIKACHU', 
+                'DR_MARIO', 
+                'NESS', 
+                'LINK', 
+                'MEWTWO', 
+                'GAME_AND_WATCH', 
+                'DONKEY_KONG', 
+                'YOUNG_LINK', 
+                'MARIO', 
+                'ROY', 
+                'BOWSER', 
+                'ZELDA', 
+                'KIRBY', 
+                'PICHU'
+                ]
             plt.figure(figsize=(1.5 * len(opponents), 1.5 * len(opponents)))
             sns.heatmap(cm, annot=True, fmt='f', cmap='Blues', xticklabels=opponents, yticklabels=opponents)
             plt.gca().invert_yaxis()
@@ -418,7 +454,7 @@ def objective(trial, dataloaders, study_name):
         else:
             epochs_no_improve += 1
 
-        if val_loss - train_loss < min_overfit:
+        if (val_loss - train_loss) / train_loss < min_overfit:
             epochs_overfit = 0
         else:
             epochs_overfit += 1
@@ -467,8 +503,8 @@ def main():
     logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     save_path = 'C:\\Users\\jaspa\\Grant ML\\slp\\data'
-    file_paths, labels, segment_shifts, segment_indices = load_data(save_path)
-    loaders = prepare_data_loaders(file_paths, labels, segment_shifts, segment_indices, batch_size)
+    train_df, val_df, test_df = load_data(save_path)
+    loaders = prepare_data_loaders(train_df, val_df, test_df, batch_size)
 
     study = optuna.create_study(study_name = study_name,
                                 sampler = sampler,
