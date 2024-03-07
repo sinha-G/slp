@@ -32,7 +32,7 @@ class CustomNet(nn.Module):
         self.trial = trial
         # Fixed dropout rate (not tuned by Optuna)
         # dropout_rate = trial.suggest_float("dropout_rate", 0.1, 0.7)
-        dropout_rate = .35
+        dropout_rate = 0
 
         num_layers = trial.suggest_int("num_conv_layers", 2, 5)
         # num_layers = 6
@@ -103,7 +103,7 @@ class CustomNet(nn.Module):
             fc_input_size = fc_output_size
 
         # Output layer
-        self.fc = nn.Linear(fc_input_size, 26)   # Output layer
+        self.fc = nn.Linear(fc_input_size, 2)   # Output layer
 
         # Combine all layers
         self.conv_layers = nn.Sequential(*conv_layers)
@@ -401,31 +401,31 @@ def objective(trial, dataloaders, study_name):
             # Plot confusion matrix
             opponents = [
                 'FOX', 
-                'FALCO', 
-                'MARTH', 
+                # 'FALCO', 
+                # 'MARTH', 
                 'SHEIK', 
-                'CAPTAIN_FALCON', 
-                'PEACH', 
-                'JIGGLYPUFF', 
-                'SAMUS', 
-                'ICE_CLIMBERS', 
-                'GANONDORF', 
-                'YOSHI', 
-                'LUIGI', 
-                'PIKACHU', 
-                'DR_MARIO', 
-                'NESS', 
-                'LINK', 
-                'MEWTWO', 
-                'GAME_AND_WATCH', 
-                'DONKEY_KONG', 
-                'YOUNG_LINK', 
-                'MARIO', 
-                'ROY', 
-                'BOWSER', 
-                'ZELDA', 
-                'KIRBY', 
-                'PICHU'
+                # 'CAPTAIN_FALCON', 
+                # 'PEACH', 
+                # 'JIGGLYPUFF', 
+                # 'SAMUS', 
+                # 'ICE_CLIMBERS', 
+                # 'GANONDORF', 
+                # 'YOSHI', 
+                # 'LUIGI', 
+                # 'PIKACHU', 
+                # 'DR_MARIO', 
+                # 'NESS', 
+                # 'LINK', 
+                # 'MEWTWO', 
+                # 'GAME_AND_WATCH', 
+                # 'DONKEY_KONG', 
+                # 'YOUNG_LINK', 
+                # 'MARIO', 
+                # 'ROY', 
+                # 'BOWSER', 
+                # 'ZELDA', 
+                # 'KIRBY', 
+                # 'PICHU'
                 ]
             plt.figure(figsize=(1.5 * len(opponents), 1.5 * len(opponents)))
             sns.heatmap(cm, annot=True, fmt='f', cmap='Blues', xticklabels=opponents, yticklabels=opponents)
