@@ -24,7 +24,7 @@ from datetime import datetime
 import os
 import gc
 import logging
-
+import time
 class GameSegmentDataset(Dataset):
     """
     Custom dataset for loading game segments from compressed numpy files.
@@ -74,64 +74,78 @@ class GameSegmentDataset(Dataset):
         label_tensor = torch.tensor(self.labels[idx], dtype=torch.long)
         return segment_tensor, label_tensor
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 class CustomNet(nn.Module):
     def __init__(self):
         super(CustomNet, self).__init__()
-        # Initial Convolution layer
-        self.conv1 = nn.Conv1d(in_channels=9, out_channels=135, kernel_size=6, stride=2, padding=1, groups=9)
-        self.batch_norm1 = nn.BatchNorm1d(135)
-        self.dropout1 = nn.Dropout(p=0.35)
-        
-        # Convolution layers defined in a Sequential module
+
         self.conv_layers = nn.Sequential(
-            nn.Conv1d(135, 94, kernel_size=5, stride=2, padding=3),
+            nn.Conv1d(9, 117, kernel_size=5, stride=1, padding=3, groups=9),
             nn.ReLU(),
-            nn.BatchNorm1d(94, eps=94),
-            nn.Dropout(p=0.35),
-            nn.Conv1d(94, 97, kernel_size=7, stride=2, padding=2),
+            nn.BatchNorm1d(117),
+            nn.Dropout(p=0.4399179174743659),
+            nn.Dropout(p=0.11409509284368298),
+            nn.Conv1d(117, 196, kernel_size=9, stride=1, padding=3),
             nn.ReLU(),
-            nn.BatchNorm1d(97, eps=97),
-            nn.Dropout(p=0.35),
-            nn.Conv1d(97, 86, kernel_size=7, stride=1, padding=2),
+            nn.BatchNorm1d(196),
+            nn.Dropout(p=0.4399179174743659),
+            nn.Dropout(p=0.11409509284368298),
+            nn.Conv1d(196, 196, kernel_size=7, stride=2, padding=3),
             nn.ReLU(),
-            nn.BatchNorm1d(86, eps=86),
-            nn.Dropout(p=0.35),
-            nn.Conv1d(86, 111, kernel_size=7, stride=1, padding=1),
+            nn.BatchNorm1d(196),
+            nn.Dropout(p=0.4399179174743659),
+            nn.Dropout(p=0.11409509284368298),
+            nn.Conv1d(196, 196, kernel_size=5, stride=2, padding=3),
             nn.ReLU(),
-            nn.BatchNorm1d(111, eps=111),
-            nn.Dropout(p=0.35),
-            nn.Conv1d(111, 112, kernel_size=4, stride=2, padding=3),
+            nn.BatchNorm1d(196),
+            nn.Dropout(p=0.4399179174743659),
+            nn.Dropout(p=0.11409509284368298),
+            nn.Conv1d(196, 196, kernel_size=9, stride=2, padding=3),
             nn.ReLU(),
-            nn.BatchNorm1d(112, eps=112),
-            nn.Dropout(p=0.35),
-            nn.Conv1d(112, 18, kernel_size=7, stride=1, padding=1),
+            nn.BatchNorm1d(196),
+            nn.Dropout(p=0.4399179174743659),
+            nn.Dropout(p=0.11409509284368298),
+            nn.Conv1d(196, 196, kernel_size=9, stride=2, padding=3),
             nn.ReLU(),
-            nn.BatchNorm1d(18, eps=18),
-            nn.Dropout(p=0.35)
+            nn.BatchNorm1d(196),
+            nn.Dropout(p=0.4399179174743659),
+            nn.Dropout(p=0.11409509284368298),
+            nn.Conv1d(196, 106, kernel_size=9, stride=1, padding=3),
+            nn.ReLU(),
+            nn.BatchNorm1d(106),
+            nn.Dropout(p=0.4399179174743659),
+            nn.Dropout(p=0.11409509284368298)
         )
-        self.fc8 = nn.LazyLinear(out_features=216)
-        self.dropout8 = nn.Dropout(.35)
-        
-        self.fc9 = nn.LazyLinear(out_features=2)
-        
+
+        self.fc_layers = nn.Sequential(
+            nn.Linear(in_features=6466, out_features=251, bias=True),
+            nn.ReLU(),
+            nn.BatchNorm1d(251),
+            nn.Dropout(p=0.37364553629019864),
+            nn.Linear(in_features=251, out_features=100, bias=True),
+            nn.ReLU(),
+            nn.BatchNorm1d(100),
+            nn.Dropout(p=0.37364553629019864),
+            nn.Linear(in_features=100, out_features=100, bias=True),
+            nn.ReLU(),
+            nn.BatchNorm1d(100),
+            nn.Dropout(p=0.37364553629019864),
+            nn.Linear(in_features=100, out_features=100, bias=True),
+            nn.ReLU(),
+            nn.BatchNorm1d(100),
+            nn.Dropout(p=0.37364553629019864),
+            nn.Linear(in_features=100, out_features=26, bias=True)
+        )
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.batch_norm1(x)
-        x = F.relu(x)
-        x = self.dropout1(x)
-        
         x = self.conv_layers(x)
-        
-        # Flatten the output for the fully connected layer
         x = torch.flatten(x, 1)
-        
-        x = self.fc8(x)
-        x = F.relu(x)
-        x = self.dropout8(x)
-        
-        x = self.fc9(x)
+        x = self.fc_layers(x)
         return x
+
 
 def load_data(save_path):
     """
@@ -149,52 +163,52 @@ def load_data(save_path):
     val_df = pd.read_feather('C:/Users/jaspa/Grant ML/slp/data/sample_val_df.feather')
     
 
-    # Specify what characters to use in classification here
-    characters_to_keep = [
-                'FOX', 
-                # 'FALCO', 
-                # 'MARTH', 
-                'SHEIK', 
-                # 'CAPTAIN_FALCON', 
-                # 'PEACH', 
-                # 'JIGGLYPUFF', 
-                # 'SAMUS', 
-                # 'ICE_CLIMBERS', 
-                # 'GANONDORF', 
-                # 'YOSHI', 
-                # 'LUIGI', 
-                # 'PIKACHU', 
-                # 'DR_MARIO', 
-                # 'NESS', 
-                # 'LINK', 
-                # 'MEWTWO', 
-                # 'GAME_AND_WATCH', 
-                # 'DONKEY_KONG', 
-                # 'YOUNG_LINK', 
-                # 'MARIO', 
-                # 'ROY', 
-                # 'BOWSER', 
-                # 'ZELDA', 
-                # 'KIRBY', 
-                # 'PICHU'
-                ]
+    # # Specify what characters to use in classification here
+    # characters_to_keep = [
+    #             'FOX', 
+    #             # 'FALCO', 
+    #             # 'MARTH', 
+    #             'SHEIK', 
+    #             # 'CAPTAIN_FALCON', 
+    #             # 'PEACH', 
+    #             # 'JIGGLYPUFF', 
+    #             # 'SAMUS', 
+    #             # 'ICE_CLIMBERS', 
+    #             # 'GANONDORF', 
+    #             # 'YOSHI', 
+    #             # 'LUIGI', 
+    #             # 'PIKACHU', 
+    #             # 'DR_MARIO', 
+    #             # 'NESS', 
+    #             # 'LINK', 
+    #             # 'MEWTWO', 
+    #             # 'GAME_AND_WATCH', 
+    #             # 'DONKEY_KONG', 
+    #             # 'YOUNG_LINK', 
+    #             # 'MARIO', 
+    #             # 'ROY', 
+    #             # 'BOWSER', 
+    #             # 'ZELDA', 
+    #             # 'KIRBY', 
+    #             # 'PICHU'
+    #             ]
     
-    test_df = test_df[test_df['character'].isin(characters_to_keep)]
-    train_df = train_df[train_df['character'].isin(characters_to_keep)]
-    val_df = val_df[val_df['character'].isin(characters_to_keep)]
+    # test_df = test_df[test_df['character'].isin(characters_to_keep)]
+    # train_df = train_df[train_df['character'].isin(characters_to_keep)]
+    # val_df = val_df[val_df['character'].isin(characters_to_keep)]
 
-    # Extract 'file_paths' + 'file' and 'labels' columns
-    # file_paths = (df['path'] + '\\' + df['file']).tolist()
-    # labels = df['labels'].tolist()
-    # segment_shifts = df['segment_shift'].tolist()
-    # segment_indices = df['segment_index'].tolist()
+    # # Extract 'file_paths' + 'file' and 'labels' columns
+    # # file_paths = (df['path'] + '\\' + df['file']).tolist()
+    # # labels = df['labels'].tolist()
+    # # segment_shifts = df['segment_shift'].tolist()
+    # # segment_indices = df['segment_index'].tolist()
 
-    # Reduce the labels to be [0, 1, ..., len(characters_to_keep) - 1]
-    label_encoder = LabelEncoder()
-    label_encoder.fit(test_df['labels'])
-    test_df['labels'] = label_encoder.transform(test_df['labels'])
-    train_df['labels'] = label_encoder.transform(train_df['labels'])
-    val_df['labels'] = label_encoder.transform(val_df['labels'])
+    # # Reduce the labels to be [0, 1, ..., len(characters_to_keep) - 1]
+    # label_encoder = LabelEncoder()
+    # label_encoder.fit(test_df['labels'])
+    # test_df['labels'] = label_encoder.transform(test_df['labels'])
+    # train_df['labels'] = label_encoder.transform(train_df['labels'])
+    # val_df['labels'] = label_encoder.transform(val_df['labels'])
 
     # logging.info(df)
     # logging.info(labels)
@@ -238,43 +252,42 @@ def prepare_data_loaders(train_df, val_df, test_df, batch_size, num_workers = 15
     return loaders
 
 
-def train_epoch(model, dataloader, optimizer, criterion, scaler,device):
+def train_epoch(model, dataloader, optimizer, criterion, scaler, device):
     model.train()
-    train_loss = 0.0
-    train_correct = 0
-    train_total = 0
-    for inputs, labels in dataloader:
-        inputs, labels = inputs.to(device), labels.to(device)
+    running_loss = 0.0
+    running_correct = 0
+    running_total = 0
+    start_time = time.time()
 
-        # Forward pass with mixed precision
-        with autocast():
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)  # Apply .float() to labels
+    with tqdm(dataloader, desc="Training", unit="batch") as tepoch:
+        for batch_idx, (inputs, labels) in enumerate(tepoch):
+            inputs, labels = inputs.to(device), labels.to(device)
 
-        # Backward pass and optimization
-        # optimizer.zero_grad()
-        # loss.backward()
-        # optimizer.step()
-        optimizer.zero_grad()
-        scaler.scale(loss).backward()
-        scaler.step(optimizer)
-        scaler.update()    
+            # Forward and backward passes
+            optimizer.zero_grad()
+            with torch.cuda.amp.autocast():
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+            
+            running_loss += loss.item()
+            running_total += labels.size(0)
+            _, predicted = torch.max(outputs.data, 1)
+            running_correct += (predicted == labels).sum().item()
 
-        # Update progress
-        train_loss += loss.item()
-        train_total += labels.size(0)
+            # Calculate running loss and accuracy
+            running_accuracy = 100. * running_correct / running_total
+            running_avg_loss = running_loss / (batch_idx + 1)
 
-        # Apply softmax to get the predicted probabilities for each class
-        predicted_probs = torch.softmax(outputs, dim=1)
+            # Update tqdm postfixes to show running loss and accuracy
+            tepoch.set_postfix(loss=running_avg_loss, accuracy=f"{running_accuracy:.2f}%")
 
-        # Get the predicted class indices by finding the index with the maximum probability
-        predicted_classes = torch.argmax(predicted_probs, dim=1)
-
-        # Add 1 for every correct prediction
-        train_correct += (predicted_classes == labels).sum().item()
-
-    train_accuracy = 100 * train_correct / train_total
-    train_loss = train_loss / train_total
+    elapsed_time = time.time() - start_time
+    train_loss = running_loss / running_total
+    train_accuracy = running_accuracy
+    print(f"Training time: {elapsed_time:.2f}s")
 
     return train_loss, train_accuracy
 
@@ -283,32 +296,33 @@ def validate_epoch(model, dataloader, criterion, device):
     val_loss = 0.0
     val_correct = 0
     val_total = 0
+    start_time = time.time()
+
     with torch.no_grad():
-        for inputs, labels in dataloader:
-            inputs, labels = inputs.to(device), labels.to(device)
+        with tqdm(dataloader, desc="Validation", unit="batch") as tepoch:
+            for inputs, labels in tepoch:
+                inputs, labels = inputs.to(device), labels.to(device)
 
-            # Forward pass with mixed precision
-            with autocast():
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)  # Apply .float() to labels
+                with torch.cuda.amp.autocast():
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
 
-            # Update progress
-            val_loss += loss.item()
-            val_total += labels.size(0)
+                val_loss += loss.item()
+                val_total += labels.size(0)
+                _, predicted = torch.max(outputs.data, 1)
+                val_correct += (predicted == labels).sum().item()
 
-            # Apply softmax to get the predicted probabilities for each class
-            predicted_probs = torch.softmax(outputs, dim=1)
+                # Update tqdm postfixes
+                batch_loss = loss.item()
+                tepoch.set_postfix(loss=batch_loss)
 
-            # Get the predicted class indices by finding the index with the maximum probability
-            predicted_classes = torch.argmax(predicted_probs, dim=1)
+    elapsed_time = time.time() - start_time
+    val_accuracy = 100 * val_correct / val_total
+    val_loss /= len(dataloader.dataset)
+    print(f"Validation time: {elapsed_time:.2f}s")
 
-            # Add 1 for every correct prediction
-            val_correct += (predicted_classes == labels).sum().item()
+    return val_loss, val_accuracy
 
-        val_accuracy = 100 * val_correct / val_total
-        val_loss = val_loss / val_total
-
-        return val_loss, val_accuracy
 
 def evaluate_test(model, dataloader, criterion, device):
     model.eval()  # Set model to evaluation mode
@@ -440,10 +454,10 @@ def main():
     # class_weights = torch.tensor([1, 98880 / 93713, 98880 / 54502, 98880 / 43391, 98880 / 32625], device = device)
     # class_weights.to(device)
     criterion = nn.CrossEntropyLoss(reduction = 'sum')
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
     # Training loop with early stopping and tqdm progress bar
-    patience = 10
-    epochs = 4
+    patience = 8
+    epochs = 100
     min_delta = 0.0001
     min_overfit = .1
 
@@ -456,56 +470,58 @@ def main():
     
     # Initialize tqdm progress bar
     pbar = tqdm(total=epochs, desc="Epochs", position=0, leave=True)
-
-    for epoch in range(epochs):
-        train_loss, train_accuracy = train_epoch(model, dataloaders['train'], optimizer, criterion,scaler, device)
-        val_loss, val_accuracy = validate_epoch(model, dataloaders['val'], criterion, device)
-        
-         # Update the learning rate based on validation loss
-        # scheduler.step(val_loss)
-
-                # Early Stopping check and progress bar update
-        if val_accuracy > best_val_acc:
-            best_val_acc = val_accuracy
-        if (val_loss + min_delta) < best_val_loss:
-            best_val_loss = val_loss
-            best_val_accuracy = val_accuracy
-            epochs_no_improve = 0
-        else:
-            epochs_no_improve += 1
-
-        if (val_loss - train_loss) / train_loss < min_overfit:
-            epochs_overfit = 0
-        else:
-            epochs_overfit += 1
+    try:
+        for epoch in range(epochs):
+            train_loss, train_accuracy = train_epoch(model, dataloaders['train'], optimizer, criterion,scaler, device)
+            val_loss, val_accuracy = validate_epoch(model, dataloaders['val'], criterion, device)
             
-        #  # Early Stopping and Learning Rate Adjustment
-        # if  epochs_overfit >= patience:
-        #     pbar.write(f'Early stopping triggered at epoch {epoch + 1}')
-        #     pbar.close()
-        #     break
-        # if epochs_no_improve == 3:
-        #     # Manually decrease learning rate
-        #     epochs_no_improve = 0
-        #     for param_group in optimizer.param_groups:
-        #         param_group['lr'] = param_group['lr'] * 0.1
-        #     # logging.info(f'Learning rate decreased to {optimizer.param_groups[0]["lr"]}')
-            
-            
+            # Update the learning rate based on validation loss
+            scheduler.step(val_loss)
+
+                    # Early Stopping check and progress bar update
+            # Early Stopping check and progress bar update
+            if val_accuracy > best_val_acc:
+                best_val_acc = val_accuracy
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                # best_val_accuracy = val_accuracy
+            else:
+                epochs_no_improve +=1
+
+            if (val_loss - train_loss) / train_loss > min_overfit:
+                epochs_overfit += 1
+                
+            #  # Early Stopping and Learning Rate Adjustment
+            # if  epochs_overfit >= patience:
+            #     pbar.write(f'Early stopping triggered at epoch {epoch + 1}')
+            #     pbar.close()
+            #     break
+            # if epochs_no_improve == 3:
+            #     # Manually decrease learning rate
+            #     epochs_no_improve = 0
+            #     for param_group in optimizer.param_groups:
+            #         param_group['lr'] = param_group['lr'] * 0.1
+            #     # logging.info(f'Learning rate decreased to {optimizer.param_groups[0]["lr"]}')
+                
+                
 
 
-        # Update progress bar
-        pbar.set_postfix_str(f"Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_accuracy:.4f}")
-        pbar.update(1)  # Move the progress bar by one epoch
-        # Log Losses
-        logging.info(f'Epoch {epoch + 1}/{epochs} - Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_accuracy:.4f}')
+            # Update progress bar
+            pbar.set_postfix_str(f"Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_acc:.4f}")
+            pbar.update(1)  # Move the progress bar by one epoch
+            # Log Losses
+            logging.info(f'Epoch {epoch + 1}/{epochs} - Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_acc:.4f}')
 
-        # Check early stopping condition
-        if epochs_overfit >= patience:
-            pbar.write(f'Early stopping triggered at epoch {epoch + 1}')
-            pbar.close()  # Close the progress bar
-            break
+            # Check early stopping condition
+            if epochs_overfit >= patience or epochs_no_improve >= patience:
+                pbar.write(f'Early stopping triggered at epoch {epoch + 1}')
+                pbar.close()  # Close the progress bar
+                break
 
+    except KeyboardInterrupt:
+        print("Training interrupted by user.")
+        pbar.close()
+    print('+')
     # Evaluate model on test set after training is complete (if necessary)
     test_loss, test_accuracy = evaluate_test(model, dataloaders['test'], criterion, device)
     print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
