@@ -21,7 +21,7 @@ from prettytable import PrettyTable
 import pandas as pd
 
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import gc
 import logging
@@ -36,9 +36,9 @@ class CustomNet(nn.Module):
         # num_fc_layers = trial.suggest_int("num_conv_layers", 3, 7)
         num_fc_layers = 5
         
-        dropout_rate_conv = trial.suggest_float("dropout_rate_conv", 0, 0.5)
-        dropout1d_rate_conv = trial.suggest_float("dropout1d_rate_conv", 0, 0.5)
-        dropout_rate_fc = trial.suggest_float("dropout_rate_fc", .2, 0.5)
+        dropout_rate_conv = trial.suggest_float("dropout_rate_conv", 0.1, 0.5)
+        dropout1d_rate_conv = trial.suggest_float("dropout1d_rate_conv", 0.1, 0.5)
+        dropout_rate_fc = trial.suggest_float("dropout_rate_fc", 0.2, 0.5)
         # dropout_rate_conv /= 2
         # dropout1d_rate_conv /= 2
         # dropout_rate_fc = .3
@@ -47,9 +47,10 @@ class CustomNet(nn.Module):
 
         # Define the first convolution layer with depthwise convolution
         out_channels_1 = trial.suggest_int("out_channels_1", 9, 9 * 16, 9)
-        kernel_size_1 = trial.suggest_int("kernel_size_1", 3, 7)
+        kernel_size_1 = trial.suggest_int("kernel_size_1", 3, 7, 2)
         stride_1 = trial.suggest_int("stride_1", 1, 2)
-        padding_1 = trial.suggest_int("padding_1", 1, 3)
+        # padding_1 = trial.suggest_int("padding_1", 1, 3)
+        padding_1 = 3
 
         conv_layers = [nn.Conv1d(in_channels, out_channels_1, kernel_size_1,stride=stride_1, padding=padding_1, groups=in_channels)]
         
@@ -85,12 +86,12 @@ class CustomNet(nn.Module):
                 stride_count += 1
         i += 1
         
-        kernel_size_last = trial.suggest_int(f"kernel_size_{i}", 3, 11)
+        kernel_size_last = trial.suggest_int(f"kernel_size_{i}", 3, 11, 2)
         stride_last = trial.suggest_int(f"stride_{i}", 1, 2)
         padding = 3
-        # last_conv_layer_out = trial.suggest_int(f"last_conv_layer_out", 16, 128)
+        last_conv_layer_out = trial.suggest_int(f"last_conv_layer_out", 32, 128)
         conv_layers.append(nn.Conv1d(   
-            in_channels, 64, kernel_size_last,
+            in_channels, last_conv_layer_out, kernel_size_last,
             stride=stride_last, padding=padding
             ))
         conv_layers.append(nn.ReLU())
@@ -415,34 +416,34 @@ def objective(trial, dataloaders, num_classes, characters, study_name):
             current_datetime_string = current_datetime_string.replace(":", "-")
 
             # Plot confusion matrix
-            opponents = [
-                'FOX', 
-                # 'FALCO', 
-                # 'MARTH', 
-                'SHEIK', 
-                # 'CAPTAIN_FALCON', 
-                # 'PEACH', 
-                # 'JIGGLYPUFF', 
-                # 'SAMUS', 
-                # 'ICE_CLIMBERS', 
-                # 'GANONDORF', 
-                # 'YOSHI', 
-                # 'LUIGI', 
-                # 'PIKACHU', 
-                # 'DR_MARIO', 
-                # 'NESS', 
-                # 'LINK', 
-                # 'MEWTWO', 
-                # 'GAME_AND_WATCH', 
-                # 'DONKEY_KONG', 
-                # 'YOUNG_LINK', 
-                # 'MARIO', 
-                # 'ROY', 
-                # 'BOWSER', 
-                # 'ZELDA', 
-                # 'KIRBY', 
-                # 'PICHU'
-                ]
+            # opponents = [
+            #     'FOX', 
+            #     'FALCO', 
+            #     'MARTH', 
+            #     'SHEIK', 
+            #     'CAPTAIN_FALCON', 
+            #     'PEACH', 
+            #     'JIGGLYPUFF', 
+            #     'SAMUS', 
+            #     'ICE_CLIMBERS', 
+            #     'GANONDORF', 
+            #     'YOSHI', 
+            #     'LUIGI', 
+            #     'PIKACHU', 
+            #     'DR_MARIO', 
+            #     'NESS', 
+            #     'LINK', 
+            #     'MEWTWO', 
+            #     'GAME_AND_WATCH', 
+            #     'DONKEY_KONG', 
+            #     'YOUNG_LINK', 
+            #     'MARIO', 
+            #     'ROY', 
+            #     'BOWSER', 
+            #     'ZELDA', 
+            #     'KIRBY', 
+            #     'PICHU'
+            #     ]
             plt.figure(figsize=(1.5 * len(characters), 1.5 * len(characters)))
             sns.heatmap(cm, annot=True, fmt='f', cmap='Blues', xticklabels=characters, yticklabels=characters)
             plt.gca().invert_yaxis()
@@ -454,8 +455,8 @@ def objective(trial, dataloaders, num_classes, characters, study_name):
             return test_loss, test_accuracy
                 
     # Training loop with early stopping and tqdm progress bar
-    patience = 3
-    epochs = 250
+    patience = 2
+    epochs = 2
     min_delta = 0.0001
     min_overfit = .1
 
@@ -507,24 +508,33 @@ def objective(trial, dataloaders, num_classes, characters, study_name):
 
 
 def main():
-    # Ensure reproducibility
-    seed = 42
+    # Ensure reproducibility with a unique(ish) string
+    seed = int(datetime.now().strftime('%Y%m%d%H%M%S')) % (2**32 - 1)
     torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     sampler = optuna.samplers.TPESampler(seed = seed)
-    
-    # Get starting time
-    current_datetime = datetime.now()
-    current_datetime_string = current_datetime.strftime("%Y-%m-%d %H:%M:%S - ")
-    current_datetime_string = current_datetime_string.replace(":", "-")
-    
+
     # Set Some Variables
-    study_name = current_datetime_string + "Basic CNN - Classify All Characters"
+    # study_name = current_datetime_string + "Basic CNN - Classify All Characters"
+    study_name = "Multiday CNN - Classify All - 2 Epochs Per Trial"
     batch_size = 256
 
     # Set up logging file
     log_file = 'C:\\Users\\jaspa\\Grant ML\\slp\\data\\classifyall\\logs\\' + study_name + ' Log.txt'
     logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.info(f"Seed = {seed}")
+    
+    current_time = datetime.now()
+    target_time = datetime(current_time.year, current_time.month, current_time.day, 5, 0, 0)
+
+    # If it's already past 5 am today, calculate the time until 5 am tomorrow
+    if current_time >= target_time:
+        target_time += timedelta(days=1)
+
+    time_difference = target_time - current_time
+    hours_until_5_am = time_difference.total_seconds() / 3600
+
+    logging.info(f"Commencing training for {hours_until_5_am} hours.")
 
     save_path = 'C:\\Users\\jaspa\\Grant ML\\slp\\data'
     train_df, val_df, test_df = load_data(save_path)
@@ -536,10 +546,11 @@ def main():
                                 sampler = sampler,
                                 direction = "minimize",
                                 storage = "mysql+pymysql://root:MomentusPigs@localhost:3306/optuna_trials",
+                                load_if_exists = True
                                 )
 
     objective_with_loaders = lambda trial: objective(trial, loaders, num_classes, characters, study_name = study_name)
-    study.optimize(objective_with_loaders, n_trials = 1000, show_progress_bar = True, timeout=3600 * 10)
+    study.optimize(objective_with_loaders, n_trials = 1000, show_progress_bar = True, timeout=3600 * hours_until_5_am)
 
     # Print the overall best hyperparameters
     print("Best trial overall:")
@@ -548,13 +559,6 @@ def main():
     print("  Params: ")
     for key, value in trial.params.items():
         print(f"    {key}: {value}")
-
-    # model = SimpleCNN().to('cuda')  # Assuming the use of a GPU
-    # criterion = nn.BCEWithLogitsLoss()
-    # optimizer = Adam(model.parameters(), lr=0.001)
-
-    # train_model(model, criterion, optimizer, loaders, 'cuda')
-    # evaluate_model(model, loaders['val'])
 
 if __name__ == '__main__':
     main()
