@@ -519,11 +519,8 @@ def main():
     study_name = "Multiday CNN - Classify All - 2 Epochs Per Trial"
     batch_size = 256
 
-    # Set up logging file
-    log_file = 'C:\\Users\\jaspa\\Grant ML\\slp\\data\\classifyall\\logs\\' + study_name + ' Log.txt'
-    logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    logging.info(f"Seed = {seed}")
     
+        
     current_time = datetime.now()
     target_time = datetime(current_time.year, current_time.month, current_time.day, 5, 0, 0)
 
@@ -534,7 +531,11 @@ def main():
     time_difference = target_time - current_time
     hours_until_5_am = time_difference.total_seconds() / 3600
 
+    # Set up logging file. Log the training hours and seed.
+    log_file = 'C:\\Users\\jaspa\\Grant ML\\slp\\data\\classifyall\\logs\\' + study_name + ' Log.txt'
+    logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info(f"Commencing training for {hours_until_5_am} hours.")
+    logging.info(f"Seed: {seed}")
 
     save_path = 'C:\\Users\\jaspa\\Grant ML\\slp\\data'
     train_df, val_df, test_df = load_data(save_path)
