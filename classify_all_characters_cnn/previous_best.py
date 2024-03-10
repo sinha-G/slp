@@ -526,7 +526,7 @@ def main():
     log_file = 'data\\classify5\\logs\\' + study_name + ' Log.txt'
     logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    save_path = 'C:/Users/jaspa/Grant ML/slp/data'
+    save_path = current_datetime_string + 'C:/Users/jaspa/Grant ML/slp/data'
     train_df, val_df, test_df= load_data(save_path)
     dataloaders = prepare_data_loaders(train_df, val_df, test_df, batch_size = batch_size,num_workers=15)
     
@@ -576,7 +576,9 @@ def main():
             val_loss, val_accuracy = validate_epoch(model, dataloaders['val'], criterion, device)
             
             # Update the learning rate based on validation loss
+            # Check and print if learning rate has decreased
             scheduler.step(val_loss)
+            
 
                     # Early Stopping check and progress bar update
             # Early Stopping check and progress bar update
@@ -607,7 +609,7 @@ def main():
 
 
             # Update progress bar
-            pbar.set_postfix_str(f"Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_acc:.4f}")
+            pbar.set_postfix_str(f"Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.6f}, Best Validation Accuracy: {best_val_acc:.4f}, LR: {optimizer.param_groups[0]['lr']:.8f}")
             pbar.update(1)  # Move the progress bar by one epoch
             # Log Losses
             logging.info(f'Epoch {epoch + 1}/{epochs} - Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_acc:.4f}')
