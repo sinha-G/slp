@@ -71,7 +71,7 @@ class CustomNet(nn.Module):
             kernel_size_i = trial.suggest_int(f"kernel_size_{i}", 3, 11, 2)
             stride_i = trial.suggest_int(f"stride_{i}", 1, 2)
             # padding_i = trial.suggest_int(f"padding_{i}", 1, 5)
-            padding = 3
+            padding = 3 
 
             conv_layers.append(nn.Conv1d(
                 in_channels, out_channels_middle, kernel_size_i,
