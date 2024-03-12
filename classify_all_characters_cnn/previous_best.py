@@ -25,6 +25,9 @@ import os
 import gc
 import logging
 import time
+
+
+
 class GameSegmentDataset(Dataset):
     """
     Custom dataset for loading game segments from compressed numpy files.
@@ -145,68 +148,7 @@ class GameSegmentDataset(Dataset):
 #         x = torch.flatten(x, 1)
 #         x = self.fc_layers(x)
 #         return x
-
-# class CustomNet(nn.Module):
-#     def __init__(self):
-#         super(CustomNet, self).__init__()
-
-#         self.conv_layers = nn.Sequential(
-#             nn.Conv1d(9, 99, kernel_size=5, stride=1, padding=3, groups=9),
-#             nn.ReLU(),
-#             nn.BatchNorm1d(99),
-#             nn.Dropout(p=0.1926622699555676),
-#             nn.Conv1d(99, 235, kernel_size=7, stride=2, padding=3),
-#             nn.ReLU(),
-#             nn.BatchNorm1d(235),
-#             nn.Dropout(p=0.1926622699555676),
-#             nn.Conv1d(235, 235, kernel_size=9, stride=2, padding=3),
-#             nn.ReLU(),
-#             nn.BatchNorm1d(235),
-#             nn.Dropout(p=0.1926622699555676),
-#             nn.Conv1d(235, 235, kernel_size=5, stride=1, padding=3),
-#             nn.ReLU(),
-#             nn.BatchNorm1d(235),
-#             nn.Dropout(p=0.1926622699555676),
-#             nn.Conv1d(235, 235, kernel_size=7, stride=2, padding=3),
-#             nn.ReLU(),
-#             nn.BatchNorm1d(235),
-#             nn.Dropout(p=0.1926622699555676),
-#             nn.Conv1d(235, 235, kernel_size=5, stride=2, padding=3),
-#             nn.ReLU(),
-#             nn.BatchNorm1d(235),
-#             nn.Dropout(p=0.1926622699555676),
-#             nn.Conv1d(235, 100, kernel_size=3, stride=1, padding=3),
-#             nn.ReLU(),
-#             nn.BatchNorm1d(100),
-#             nn.Dropout(p=0.1926622699555676)
-#         )
-
-#         self.fc_layers = nn.Sequential(
-#             nn.Linear(in_features=7000, out_features=256),
-#             nn.ReLU(),
-#             nn.BatchNorm1d(256),
-#             nn.Dropout(p=0.2638850409573792),
-#             nn.Linear(in_features=256, out_features=61),
-#             nn.ReLU(),
-#             nn.BatchNorm1d(61),
-#             nn.Dropout(p=0.2638850409573792),
-#             nn.Linear(in_features=61, out_features=61),
-#             nn.ReLU(),
-#             nn.BatchNorm1d(61),
-#             nn.Dropout(p=0.2638850409573792),
-#             nn.Linear(in_features=61, out_features=61),
-#             nn.ReLU(),
-#             nn.BatchNorm1d(61),
-#             nn.Dropout(p=0.2638850409573792),
-#             nn.Linear(in_features=61, out_features=26)
-#         )
-
-#     def forward(self, x):
-#         x = self.conv_layers(x)
-#         x = x.view(x.size(0), -1)  # Flatten the tensor for the fully connected layer
-#         x = self.fc_layers(x)
-#         return x
-    
+   
 class CustomNet(nn.Module):
     def __init__(self):
         super(CustomNet, self).__init__()
@@ -276,6 +218,77 @@ class CustomNet(nn.Module):
         x = x.view(x.size(0), -1)  # Flatten the output for the fully connected layers
         x = self.fc_layers(x)
         return x
+
+# class CustomNet(nn.Module):
+#     def __init__(self):
+#         super(CustomNet, self).__init__()
+
+#         # Define the convolutional layers as per the structure given
+#         self.conv_layers = nn.Sequential(
+#             nn.Conv1d(9, 135, kernel_size=5, stride=1, padding=3, groups=9),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(135),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#             nn.Conv1d(135, 256, kernel_size=11, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#             nn.Conv1d(256, 256, kernel_size=11, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#             nn.Conv1d(256, 256, kernel_size=11, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#             nn.Conv1d(256, 256, kernel_size=11, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#             nn.Conv1d(256, 256, kernel_size=11, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#             nn.Conv1d(256, 256, kernel_size=11, stride=1, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#         )
+
+#         # Define the fully connected layers as per the structure given
+#         self.fc_layers = nn.Sequential(
+#             nn.LazyLinear(out_features=256),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=0.5),
+#             nn.Linear(in_features=256, out_features=128),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(128),
+#             nn.Dropout(p=0.5),
+#             nn.Linear(in_features=128, out_features=128),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(128),
+#             nn.Dropout(p=0.5),
+#             nn.Linear(in_features=128, out_features=128),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(128),
+#             nn.Dropout(p=0.5),
+#             nn.Linear(in_features=128, out_features=26)
+#         )
+
+#     def forward(self, x):
+#         x = self.conv_layers(x)
+#         x = x.view(x.size(0), -1)  # Flatten the output for the fully connected layers
+#         x = self.fc_layers(x)
+#         return x
+
 
 def load_data(save_path):
     """
@@ -457,7 +470,7 @@ def validate_epoch(model, dataloader, criterion, device):
     return val_loss, val_accuracy
 
 
-def evaluate_test(model, dataloader, criterion, device):
+def evaluate_test(model, dataloader, criterion, device,characters):
     model.eval()  # Set model to evaluation mode
     test_loss = 0.0
     test_correct = 0
@@ -498,12 +511,14 @@ def evaluate_test(model, dataloader, criterion, device):
     print(f"Testing time: {elapsed_time:.2f}s")
 
     cm = confusion_matrix(y_true, y_pred, normalize='pred')
-    plt.figure(figsize=(12, 12))
-    sns.heatmap(cm, annot=True, fmt='f', cmap='Blues')
+    plt.figure(figsize=(1.5 * len(characters), 1.5 * len(characters)))
+    sns.heatmap(cm, annot=True, fmt='f', cmap='Blues', xticklabels=characters, yticklabels=characters)
     plt.gca().invert_yaxis()
     plt.xlabel('Predicted')
     plt.ylabel('True')
     plt.title('Confusion Matrix')
+    # plt.savefig(confusion_matrix_path + current_datetime_string + ' Confusion Matrix (pred).png')
+
     plt.show()
 
     return test_loss, test_accuracy
@@ -519,7 +534,7 @@ def main():
     current_datetime_string = current_datetime_string.replace(":", "-")
     
     # Set Some Variables
-    study_name = "26 char trial 29 modified dropout"
+    study_name = current_datetime_string + "25 char big model"
     batch_size = 256
 
     # Set up logging file
@@ -554,9 +569,9 @@ def main():
     # class_weights = torch.tensor([1, 98880 / 93713, 98880 / 54502, 98880 / 43391, 98880 / 32625], device = device)
     # class_weights.to(device)
     criterion = nn.CrossEntropyLoss(reduction = 'sum')
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=1)
     # Training loop with early stopping and tqdm progress bar
-    patience = 10
+    patience = 5
     epochs = 100
     min_delta = 0.0001
     min_overfit = .1
@@ -609,10 +624,10 @@ def main():
 
 
             # Update progress bar
-            pbar.set_postfix_str(f"Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.6f}, Best Validation Accuracy: {best_val_acc:.4f}, LR: {optimizer.param_groups[0]['lr']:.8f}")
+            pbar.set_postfix_str(f"Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.4f}, Val Loss: {val_loss:.6f}, Best Val Acc: {best_val_acc:.4f}, LR: {optimizer.param_groups[0]['lr']:.8f}")
             pbar.update(1)  # Move the progress bar by one epoch
             # Log Losses
-            logging.info(f'Epoch {epoch + 1}/{epochs} - Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_acc:.4f}')
+            logging.info(f'Epoch {epoch + 1}/{epochs} - Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.4f}, Val Loss: {val_loss:.6f}, Best Val Acc: {best_val_acc:.4f}, LR: {optimizer.param_groups[0]['lr']:.8f}')
 
             # Check early stopping condition
             if epochs_overfit >= patience or epochs_no_improve >= patience:
@@ -623,14 +638,15 @@ def main():
     except KeyboardInterrupt:
         print("Training interrupted by user.")
         pbar.close()
-    print('+')
+
     # Evaluate model on test set after training is complete (if necessary)
-    test_loss, test_accuracy = evaluate_test(model, dataloaders['test'], criterion, device)
+    test_loss, test_accuracy = evaluate_test(model, dataloaders['test'], criterion, device, train_df['character'].unique())
+
     print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
     logging.info(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
     
         # Save the final model after training
-    final_model_path = 'C:/Users/jaspa/Grant ML/Models/26_modelS_2523.pth'
+    final_model_path = f'C:/Users/jaspa/Grant ML/Models/{current_datetime_string} 25 char big model.pth'
     torch.save(model.state_dict(), final_model_path)
     print(f'Final model saved at {final_model_path}')
 
