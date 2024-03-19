@@ -54,7 +54,7 @@ class SimpleCNN(nn.Module):
         self.conv2 = nn.Conv1d(32, 64, kernel_size=3, stride=1, padding=1)
         self.pool = nn.MaxPool1d(2, 2)
         self.fc1 = nn.LazyLinear(128)  # LazyLinear allows deferring the determination of in_features
-        self.fc2 = nn.Linear(128,2)  # Assuming 5 classes for classification
+        self.fc2 = nn.Linear(128,17)  # Assuming 5 classes for classification
 
     def forward(self, x):
         """Defines the forward pass of the model."""
