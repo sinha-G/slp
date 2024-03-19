@@ -24,6 +24,9 @@ from datetime import datetime
 import os
 import gc
 import logging
+import time
+
+
 
 class GameSegmentDataset(Dataset):
     """
@@ -74,64 +77,218 @@ class GameSegmentDataset(Dataset):
         label_tensor = torch.tensor(self.labels[idx], dtype=torch.long)
         return segment_tensor, label_tensor
 
+# import torch
+# import torch.nn as nn
+# import torch.nn.functional as F
+
+# class CustomNet(nn.Module):
+#     def __init__(self):
+#         super(CustomNet, self).__init__()
+
+#         self.conv_layers = nn.Sequential(
+#             nn.Conv1d(9, 117, kernel_size=5, stride=1, padding=3, groups=9),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(117),
+#             nn.Dropout(p=0.4399179174743659),
+#             nn.Dropout(p=0.11409509284368298),
+#             nn.Conv1d(117, 196, kernel_size=9, stride=1, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(196),
+#             nn.Dropout(p=0.4399179174743659),
+#             nn.Dropout(p=0.11409509284368298),
+#             nn.Conv1d(196, 196, kernel_size=7, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(196),
+#             nn.Dropout(p=0.4399179174743659),
+#             nn.Dropout(p=0.11409509284368298),
+#             nn.Conv1d(196, 196, kernel_size=5, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(196),
+#             nn.Dropout(p=0.4399179174743659),
+#             nn.Dropout(p=0.11409509284368298),
+#             nn.Conv1d(196, 196, kernel_size=9, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(196),
+#             nn.Dropout(p=0.4399179174743659),
+#             nn.Dropout(p=0.11409509284368298),
+#             nn.Conv1d(196, 196, kernel_size=9, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(196),
+#             nn.Dropout(p=0.4399179174743659),
+#             nn.Dropout(p=0.11409509284368298),
+#             nn.Conv1d(196, 106, kernel_size=9, stride=1, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(106),
+#             nn.Dropout(p=0.4399179174743659),
+#             nn.Dropout(p=0.11409509284368298)
+#         )
+
+#         self.fc_layers = nn.Sequential(
+#             nn.Linear(in_features=6466, out_features=251, bias=True),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(251),
+#             nn.Dropout(p=0.37364553629019864),
+#             nn.Linear(in_features=251, out_features=100, bias=True),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(100),
+#             nn.Dropout(p=0.37364553629019864),
+#             nn.Linear(in_features=100, out_features=100, bias=True),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(100),
+#             nn.Dropout(p=0.37364553629019864),
+#             nn.Linear(in_features=100, out_features=100, bias=True),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(100),
+#             nn.Dropout(p=0.37364553629019864),
+#             nn.Linear(in_features=100, out_features=26, bias=True)
+#         )
+
+#     def forward(self, x):
+#         x = self.conv_layers(x)
+#         x = torch.flatten(x, 1)
+#         x = self.fc_layers(x)
+#         return x
+   
 class CustomNet(nn.Module):
     def __init__(self):
         super(CustomNet, self).__init__()
-        # Initial Convolution layer
-        self.conv1 = nn.Conv1d(in_channels=9, out_channels=135, kernel_size=6, stride=2, padding=1, groups=9)
-        self.batch_norm1 = nn.BatchNorm1d(135)
-        self.dropout1 = nn.Dropout(p=0.35)
-        
-        # Convolution layers defined in a Sequential module
+
+        # Define the convolutional layers as per the structure given
         self.conv_layers = nn.Sequential(
-            nn.Conv1d(135, 94, kernel_size=5, stride=2, padding=3),
+            nn.Conv1d(9, 99, kernel_size=5, stride=1, padding=3, groups=9),
             nn.ReLU(),
-            nn.BatchNorm1d(94, eps=94),
-            nn.Dropout(p=0.35),
-            nn.Conv1d(94, 97, kernel_size=7, stride=2, padding=2),
+            nn.BatchNorm1d(99),
+            nn.Dropout(p=.4),
+            nn.Dropout1d(p=0.0),  # Assuming Dropout1d is a typo and should be Dropout
+            nn.Conv1d(99, 235, kernel_size=7, stride=2, padding=3),
             nn.ReLU(),
-            nn.BatchNorm1d(97, eps=97),
-            nn.Dropout(p=0.35),
-            nn.Conv1d(97, 86, kernel_size=7, stride=1, padding=2),
+            nn.BatchNorm1d(235),
+            nn.Dropout(p=.4),
+            nn.Dropout1d(p=0.0),
+            nn.Conv1d(235, 235, kernel_size=9, stride=2, padding=3),
             nn.ReLU(),
-            nn.BatchNorm1d(86, eps=86),
-            nn.Dropout(p=0.35),
-            nn.Conv1d(86, 111, kernel_size=7, stride=1, padding=1),
+            nn.BatchNorm1d(235),
+            nn.Dropout(p=.4),
+            nn.Dropout1d(p=0.0),
+            nn.Conv1d(235, 235, kernel_size=5, stride=1, padding=3),
             nn.ReLU(),
-            nn.BatchNorm1d(111, eps=111),
-            nn.Dropout(p=0.35),
-            nn.Conv1d(111, 112, kernel_size=4, stride=2, padding=3),
+            nn.BatchNorm1d(235),
+            nn.Dropout(p=.4),
+            nn.Dropout1d(p=0.0),
+            nn.Conv1d(235, 235, kernel_size=7, stride=2, padding=3),
             nn.ReLU(),
-            nn.BatchNorm1d(112, eps=112),
-            nn.Dropout(p=0.35),
-            nn.Conv1d(112, 18, kernel_size=7, stride=1, padding=1),
+            nn.BatchNorm1d(235),
+            nn.Dropout(p=.4),
+            nn.Dropout1d(p=0.0),
+            nn.Conv1d(235, 235, kernel_size=5, stride=2, padding=3),
             nn.ReLU(),
-            nn.BatchNorm1d(18, eps=18),
-            nn.Dropout(p=0.35)
+            nn.BatchNorm1d(235),
+            nn.Dropout(p=.4),
+            nn.Dropout1d(p=0.0),
+            nn.Conv1d(235, 100, kernel_size=3, stride=1, padding=3),
+            nn.ReLU(),
+            nn.BatchNorm1d(100),
+            nn.Dropout(p=.4),
+            nn.Dropout1d(p=0.0)
         )
-        self.fc8 = nn.LazyLinear(out_features=216)
-        self.dropout8 = nn.Dropout(.35)
-        
-        self.fc9 = nn.LazyLinear(out_features=2)
-        
+
+        # Define the fully connected layers as per the structure given
+        self.fc_layers = nn.Sequential(
+            nn.Linear(in_features=7000, out_features=256),
+            nn.ReLU(),
+            nn.BatchNorm1d(256),
+            nn.Dropout(p=0.2638850409573792),
+            nn.Linear(in_features=256, out_features=61),
+            nn.ReLU(),
+            nn.BatchNorm1d(61),
+            nn.Dropout(p=0.2638850409573792),
+            nn.Linear(in_features=61, out_features=61),
+            nn.ReLU(),
+            nn.BatchNorm1d(61),
+            nn.Dropout(p=0.2638850409573792),
+            nn.Linear(in_features=61, out_features=61),
+            nn.ReLU(),
+            nn.BatchNorm1d(61),
+            nn.Dropout(p=0.2638850409573792),
+            nn.Linear(in_features=61, out_features=26)
+        )
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.batch_norm1(x)
-        x = F.relu(x)
-        x = self.dropout1(x)
-        
         x = self.conv_layers(x)
-        
-        # Flatten the output for the fully connected layer
-        x = torch.flatten(x, 1)
-        
-        x = self.fc8(x)
-        x = F.relu(x)
-        x = self.dropout8(x)
-        
-        x = self.fc9(x)
+        x = x.view(x.size(0), -1)  # Flatten the output for the fully connected layers
+        x = self.fc_layers(x)
         return x
+
+# class CustomNet(nn.Module):
+#     def __init__(self):
+#         super(CustomNet, self).__init__()
+
+#         # Define the convolutional layers as per the structure given
+#         self.conv_layers = nn.Sequential(
+#             nn.Conv1d(9, 135, kernel_size=5, stride=1, padding=3, groups=9),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(135),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#             nn.Conv1d(135, 256, kernel_size=11, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#             nn.Conv1d(256, 256, kernel_size=11, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#             nn.Conv1d(256, 256, kernel_size=11, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#             nn.Conv1d(256, 256, kernel_size=11, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#             nn.Conv1d(256, 256, kernel_size=11, stride=2, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#             nn.Conv1d(256, 256, kernel_size=11, stride=1, padding=3),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=.5),
+#             nn.Dropout1d(p=0.1),  # Assuming Dropout1d is a typo and should be Dropout
+#         )
+
+#         # Define the fully connected layers as per the structure given
+#         self.fc_layers = nn.Sequential(
+#             nn.LazyLinear(out_features=256),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(p=0.5),
+#             nn.Linear(in_features=256, out_features=128),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(128),
+#             nn.Dropout(p=0.5),
+#             nn.Linear(in_features=128, out_features=128),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(128),
+#             nn.Dropout(p=0.5),
+#             nn.Linear(in_features=128, out_features=128),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(128),
+#             nn.Dropout(p=0.5),
+#             nn.Linear(in_features=128, out_features=26)
+#         )
+
+#     def forward(self, x):
+#         x = self.conv_layers(x)
+#         x = x.view(x.size(0), -1)  # Flatten the output for the fully connected layers
+#         x = self.fc_layers(x)
+#         return x
+
 
 def load_data(save_path):
     """
@@ -149,52 +306,52 @@ def load_data(save_path):
     val_df = pd.read_feather('C:/Users/jaspa/Grant ML/slp/data/sample_val_df.feather')
     
 
-    # Specify what characters to use in classification here
-    characters_to_keep = [
-                'FOX', 
-                # 'FALCO', 
-                # 'MARTH', 
-                'SHEIK', 
-                # 'CAPTAIN_FALCON', 
-                # 'PEACH', 
-                # 'JIGGLYPUFF', 
-                # 'SAMUS', 
-                # 'ICE_CLIMBERS', 
-                # 'GANONDORF', 
-                # 'YOSHI', 
-                # 'LUIGI', 
-                # 'PIKACHU', 
-                # 'DR_MARIO', 
-                # 'NESS', 
-                # 'LINK', 
-                # 'MEWTWO', 
-                # 'GAME_AND_WATCH', 
-                # 'DONKEY_KONG', 
-                # 'YOUNG_LINK', 
-                # 'MARIO', 
-                # 'ROY', 
-                # 'BOWSER', 
-                # 'ZELDA', 
-                # 'KIRBY', 
-                # 'PICHU'
-                ]
+    # # Specify what characters to use in classification here
+    # characters_to_keep = [
+    #             'FOX', 
+    #             # 'FALCO', 
+    #             # 'MARTH', 
+    #             'SHEIK', 
+    #             # 'CAPTAIN_FALCON', 
+    #             # 'PEACH', 
+    #             # 'JIGGLYPUFF', 
+    #             # 'SAMUS', 
+    #             # 'ICE_CLIMBERS', 
+    #             # 'GANONDORF', 
+    #             # 'YOSHI', 
+    #             # 'LUIGI', 
+    #             # 'PIKACHU', 
+    #             # 'DR_MARIO', 
+    #             # 'NESS', 
+    #             # 'LINK', 
+    #             # 'MEWTWO', 
+    #             # 'GAME_AND_WATCH', 
+    #             # 'DONKEY_KONG', 
+    #             # 'YOUNG_LINK', 
+    #             # 'MARIO', 
+    #             # 'ROY', 
+    #             # 'BOWSER', 
+    #             # 'ZELDA', 
+    #             # 'KIRBY', 
+    #             # 'PICHU'
+    #             ]
     
-    test_df = test_df[test_df['character'].isin(characters_to_keep)]
-    train_df = train_df[train_df['character'].isin(characters_to_keep)]
-    val_df = val_df[val_df['character'].isin(characters_to_keep)]
+    # test_df = test_df[test_df['character'].isin(characters_to_keep)]
+    # train_df = train_df[train_df['character'].isin(characters_to_keep)]
+    # val_df = val_df[val_df['character'].isin(characters_to_keep)]
 
-    # Extract 'file_paths' + 'file' and 'labels' columns
-    # file_paths = (df['path'] + '\\' + df['file']).tolist()
-    # labels = df['labels'].tolist()
-    # segment_shifts = df['segment_shift'].tolist()
-    # segment_indices = df['segment_index'].tolist()
+    # # Extract 'file_paths' + 'file' and 'labels' columns
+    # # file_paths = (df['path'] + '\\' + df['file']).tolist()
+    # # labels = df['labels'].tolist()
+    # # segment_shifts = df['segment_shift'].tolist()
+    # # segment_indices = df['segment_index'].tolist()
 
-    # Reduce the labels to be [0, 1, ..., len(characters_to_keep) - 1]
-    label_encoder = LabelEncoder()
-    label_encoder.fit(test_df['labels'])
-    test_df['labels'] = label_encoder.transform(test_df['labels'])
-    train_df['labels'] = label_encoder.transform(train_df['labels'])
-    val_df['labels'] = label_encoder.transform(val_df['labels'])
+    # # Reduce the labels to be [0, 1, ..., len(characters_to_keep) - 1]
+    # label_encoder = LabelEncoder()
+    # label_encoder.fit(test_df['labels'])
+    # test_df['labels'] = label_encoder.transform(test_df['labels'])
+    # train_df['labels'] = label_encoder.transform(train_df['labels'])
+    # val_df['labels'] = label_encoder.transform(val_df['labels'])
 
     # logging.info(df)
     # logging.info(labels)
@@ -238,43 +395,42 @@ def prepare_data_loaders(train_df, val_df, test_df, batch_size, num_workers = 15
     return loaders
 
 
-def train_epoch(model, dataloader, optimizer, criterion, scaler,device):
+def train_epoch(model, dataloader, optimizer, criterion, scaler, device):
     model.train()
-    train_loss = 0.0
-    train_correct = 0
-    train_total = 0
-    for inputs, labels in dataloader:
-        inputs, labels = inputs.to(device), labels.to(device)
+    running_loss = 0.0
+    running_correct = 0
+    running_total = 0
+    start_time = time.time()
 
-        # Forward pass with mixed precision
-        with autocast():
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)  # Apply .float() to labels
+    with tqdm(dataloader, desc="Training", unit="batch") as tepoch:
+        for batch_idx, (inputs, labels) in enumerate(tepoch):
+            inputs, labels = inputs.to(device), labels.to(device)
 
-        # Backward pass and optimization
-        # optimizer.zero_grad()
-        # loss.backward()
-        # optimizer.step()
-        optimizer.zero_grad()
-        scaler.scale(loss).backward()
-        scaler.step(optimizer)
-        scaler.update()    
+            # Forward and backward passes
+            optimizer.zero_grad()
+            with torch.cuda.amp.autocast():
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+            
+            running_loss += loss.item()
+            running_total += labels.size(0)
+            _, predicted = torch.max(outputs.data, 1)
+            running_correct += (predicted == labels).sum().item()
 
-        # Update progress
-        train_loss += loss.item()
-        train_total += labels.size(0)
+            # Calculate running loss and accuracy
+            running_accuracy = 100. * running_correct / running_total
+            running_avg_loss = running_loss / running_total
 
-        # Apply softmax to get the predicted probabilities for each class
-        predicted_probs = torch.softmax(outputs, dim=1)
+            # Update tqdm postfixes to show running loss and accuracy
+            tepoch.set_postfix(Loss=running_avg_loss, Accuracy=f"{running_accuracy:.2f}%")
 
-        # Get the predicted class indices by finding the index with the maximum probability
-        predicted_classes = torch.argmax(predicted_probs, dim=1)
-
-        # Add 1 for every correct prediction
-        train_correct += (predicted_classes == labels).sum().item()
-
-    train_accuracy = 100 * train_correct / train_total
-    train_loss = train_loss / train_total
+    elapsed_time = time.time() - start_time
+    train_loss = running_loss / running_total
+    train_accuracy = running_accuracy
+    print(f"Training time: {elapsed_time:.2f}s")
 
     return train_loss, train_accuracy
 
@@ -283,116 +439,89 @@ def validate_epoch(model, dataloader, criterion, device):
     val_loss = 0.0
     val_correct = 0
     val_total = 0
+    start_time = time.time()
+
     with torch.no_grad():
-        for inputs, labels in dataloader:
-            inputs, labels = inputs.to(device), labels.to(device)
+        with tqdm(dataloader, desc="Validation", unit="batch") as tepoch:
+            for inputs, labels in tepoch:
+                inputs, labels = inputs.to(device), labels.to(device)
 
-            # Forward pass with mixed precision
-            with autocast():
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)  # Apply .float() to labels
+                with torch.cuda.amp.autocast():
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
 
-            # Update progress
-            val_loss += loss.item()
-            val_total += labels.size(0)
+                val_loss += loss.item()
+                val_total += labels.size(0)
+                _, predicted = torch.max(outputs.data, 1)
+                val_correct += (predicted == labels).sum().item()
+                
+                running_accuracy = 100. * val_correct / val_total
+                running_loss = val_loss / val_total
 
-            # Apply softmax to get the predicted probabilities for each class
-            predicted_probs = torch.softmax(outputs, dim=1)
+                # Update tqdm postfixes
+                batch_loss = loss.item()
+                tepoch.set_postfix(Loss=running_loss, Accuracy=f"{running_accuracy:.2f}%")
 
-            # Get the predicted class indices by finding the index with the maximum probability
-            predicted_classes = torch.argmax(predicted_probs, dim=1)
+    elapsed_time = time.time() - start_time
+    val_accuracy = 100 * val_correct / val_total
+    val_loss /= len(dataloader.dataset)
+    print(f"Validation time: {elapsed_time:.2f}s")
 
-            # Add 1 for every correct prediction
-            val_correct += (predicted_classes == labels).sum().item()
+    return val_loss, val_accuracy
 
-        val_accuracy = 100 * val_correct / val_total
-        val_loss = val_loss / val_total
 
-        return val_loss, val_accuracy
-
-def evaluate_test(model, dataloader, criterion, device):
+def evaluate_test(model, dataloader, criterion, device,characters):
     model.eval()  # Set model to evaluation mode
     test_loss = 0.0
     test_correct = 0
     test_total = 0
     y_true = []
     y_pred = []
-    
-    # confusion_matrix_path = 'data\\classify5\\confusion_matrices\\' + study_name + '\\'
-    # os.makedirs(confusion_matrix_path, exist_ok=True)
+
+    start_time = time.time()
+
     with torch.no_grad():  # No gradients needed
-        for inputs, labels in dataloader:
-            inputs, labels = inputs.to(device), labels.to(device)
+        with tqdm(dataloader, desc="Testing", unit="batch") as tepoch:
+            for inputs, labels in tepoch:
+                inputs, labels = inputs.to(device), labels.to(device)
 
-            with autocast():
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)  # Apply .float() to labels
+                with autocast():
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
 
-            # Update progress
-            test_loss += loss.item()
-            test_total += labels.size(0)
+                test_loss += loss.item()
+                test_total += labels.size(0)
 
-            # Apply softmax to get the predicted probabilities for each class
-            predicted_probs = torch.softmax(outputs, dim=1)
+                predicted_probs = torch.softmax(outputs, dim=1)
+                predicted_classes = torch.argmax(predicted_probs, dim=1)
 
-            # Get the predicted class indices by finding the index with the maximum probability
-            predicted_classes = torch.argmax(predicted_probs, dim=1)
+                test_correct += (predicted_classes == labels).sum().item()
 
-            # Add 1 for every correct prediction
-            test_correct += (predicted_classes == labels).sum().item()
+                y_true.extend(labels.cpu().numpy())
+                y_pred.extend(predicted_classes.cpu().numpy())
 
-            # Collect true and predicted labels for confusion matrix
-            y_true.extend(labels.cpu().numpy())
-            y_pred.extend(predicted_classes.cpu().numpy())
+                running_accuracy = 100. * test_correct / test_total
+                running_loss = test_loss / test_total
+                tepoch.set_postfix(Loss=running_loss, Accuracy=f"{running_accuracy:.2f}%")
 
-        test_accuracy = 100 * test_correct / test_total
-        test_loss = test_loss / test_total
+    elapsed_time = time.time() - start_time
+    test_accuracy = 100 * test_correct / test_total
+    test_loss = test_loss / test_total
 
-        # Create confusion matrix
-        cm = confusion_matrix(y_true, y_pred, normalize='pred')
+    print(f"Testing time: {elapsed_time:.2f}s")
 
-        current_datetime = datetime.now()
-        current_datetime_string = current_datetime.strftime("%Y-%m-%d %H:%M:%S ")
-        current_datetime_string = current_datetime_string.replace(":", "-")
+    cm = confusion_matrix(y_true, y_pred, normalize='pred')
+    plt.figure(figsize=(1.5 * len(characters), 1.5 * len(characters)))
+    sns.heatmap(cm, annot=True, fmt='f', cmap='Blues', xticklabels=characters, yticklabels=characters)
+    plt.gca().invert_yaxis()
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title('Confusion Matrix')
+    # plt.savefig(confusion_matrix_path + current_datetime_string + ' Confusion Matrix (pred).png')
 
-        opponents = [
-            'FOX', 
-            'FALCO', 
-            'MARTH', 
-            'SHEIK', 
-            'CAPTAIN_FALCON', 
-            'PEACH', 
-            'JIGGLYPUFF', 
-            'SAMUS', 
-            'ICE_CLIMBERS', 
-            'GANONDORF', 
-            'YOSHI', 
-            'LUIGI', 
-            'PIKACHU', 
-            'DR_MARIO', 
-            'NESS', 
-            'LINK', 
-            'MEWTWO', 
-            'GAME_AND_WATCH', 
-            'DONKEY_KONG', 
-            'YOUNG_LINK', 
-            'MARIO', 
-            'ROY', 
-            'BOWSER', 
-            'ZELDA', 
-            'KIRBY', 
-            'PICHU'
-            ]
-        plt.figure(figsize=(1.5 * len(opponents), 1.5 * len(opponents)))
-        sns.heatmap(cm, annot=True, fmt='f', cmap='Blues', xticklabels=opponents, yticklabels=opponents)
-        plt.gca().invert_yaxis()
-        plt.xlabel('Predicted')
-        plt.ylabel('True')
-        plt.title('Confusion Matrix')
-        # plt.savefig(confusion_matrix_path + current_datetime_string + ' Confusion Matrix.png')
-        plt.show()
+    plt.show()
 
-        return test_loss, test_accuracy
+    return test_loss, test_accuracy
         
 def main():
     seed = 42
@@ -405,14 +534,14 @@ def main():
     current_datetime_string = current_datetime_string.replace(":", "-")
     
     # Set Some Variables
-    study_name = current_datetime_string + "Basic CNN - Classify Top 11 Characters"
+    study_name = current_datetime_string + "25 char big model"
     batch_size = 256
 
-    # # Set up logging file
-    # log_file = 'data\\classify5\\logs\\' + study_name + ' Log.txt'
-    # logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    # Set up logging file
+    log_file = 'data\\classify5\\logs\\' + study_name + ' Log.txt'
+    logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    save_path = 'C:/Users/jaspa/Grant ML/slp/data'
+    save_path = current_datetime_string + 'C:/Users/jaspa/Grant ML/slp/data'
     train_df, val_df, test_df= load_data(save_path)
     dataloaders = prepare_data_loaders(train_df, val_df, test_df, batch_size = batch_size,num_workers=15)
     
@@ -440,10 +569,10 @@ def main():
     # class_weights = torch.tensor([1, 98880 / 93713, 98880 / 54502, 98880 / 43391, 98880 / 32625], device = device)
     # class_weights.to(device)
     criterion = nn.CrossEntropyLoss(reduction = 'sum')
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=1)
     # Training loop with early stopping and tqdm progress bar
-    patience = 10
-    epochs = 4
+    patience = 5
+    epochs = 100
     min_delta = 0.0001
     min_overfit = .1
 
@@ -456,60 +585,70 @@ def main():
     
     # Initialize tqdm progress bar
     pbar = tqdm(total=epochs, desc="Epochs", position=0, leave=True)
-
-    for epoch in range(epochs):
-        train_loss, train_accuracy = train_epoch(model, dataloaders['train'], optimizer, criterion,scaler, device)
-        val_loss, val_accuracy = validate_epoch(model, dataloaders['val'], criterion, device)
-        
-         # Update the learning rate based on validation loss
-        # scheduler.step(val_loss)
-
-                # Early Stopping check and progress bar update
-        if val_accuracy > best_val_acc:
-            best_val_acc = val_accuracy
-        if (val_loss + min_delta) < best_val_loss:
-            best_val_loss = val_loss
-            best_val_accuracy = val_accuracy
-            epochs_no_improve = 0
-        else:
-            epochs_no_improve += 1
-
-        if (val_loss - train_loss) / train_loss < min_overfit:
-            epochs_overfit = 0
-        else:
-            epochs_overfit += 1
+    try:
+        for epoch in range(epochs):
+            train_loss, train_accuracy = train_epoch(model, dataloaders['train'], optimizer, criterion,scaler, device)
+            val_loss, val_accuracy = validate_epoch(model, dataloaders['val'], criterion, device)
             
-        #  # Early Stopping and Learning Rate Adjustment
-        # if  epochs_overfit >= patience:
-        #     pbar.write(f'Early stopping triggered at epoch {epoch + 1}')
-        #     pbar.close()
-        #     break
-        # if epochs_no_improve == 3:
-        #     # Manually decrease learning rate
-        #     epochs_no_improve = 0
-        #     for param_group in optimizer.param_groups:
-        #         param_group['lr'] = param_group['lr'] * 0.1
-        #     # logging.info(f'Learning rate decreased to {optimizer.param_groups[0]["lr"]}')
-            
+            # Update the learning rate based on validation loss
+            # Check and print if learning rate has decreased
+            scheduler.step(val_loss)
             
 
+                    # Early Stopping check and progress bar update
+            # Early Stopping check and progress bar update
+            if val_accuracy > best_val_acc:
+                best_val_acc = val_accuracy
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                # best_val_accuracy = val_accuracy
+            else:
+                epochs_no_improve +=1
 
-        # Update progress bar
-        pbar.set_postfix_str(f"Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_accuracy:.4f}")
-        pbar.update(1)  # Move the progress bar by one epoch
-        # Log Losses
-        logging.info(f'Epoch {epoch + 1}/{epochs} - Training Loss: {train_loss:.4f}, Training Accuracy: {train_accuracy:.4f}, Validation Loss: {val_loss:.4f}, Best Validation Accuracy: {best_val_accuracy:.4f}')
+            if (val_loss - train_loss) / train_loss > min_overfit:
+                epochs_overfit += 1
+                
+            #  # Early Stopping and Learning Rate Adjustment
+            # if  epochs_overfit >= patience:
+            #     pbar.write(f'Early stopping triggered at epoch {epoch + 1}')
+            #     pbar.close()
+            #     break
+            # if epochs_no_improve == 3:
+            #     # Manually decrease learning rate
+            #     epochs_no_improve = 0
+            #     for param_group in optimizer.param_groups:
+            #         param_group['lr'] = param_group['lr'] * 0.1
+            #     # logging.info(f'Learning rate decreased to {optimizer.param_groups[0]["lr"]}')
+                
+                
 
-        # Check early stopping condition
-        if epochs_overfit >= patience:
-            pbar.write(f'Early stopping triggered at epoch {epoch + 1}')
-            pbar.close()  # Close the progress bar
-            break
+
+            # Update progress bar
+            pbar.set_postfix_str(f"Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.4f}, Val Loss: {val_loss:.6f}, Best Val Acc: {best_val_acc:.4f}, LR: {optimizer.param_groups[0]['lr']:.8f}")
+            pbar.update(1)  # Move the progress bar by one epoch
+            # Log Losses
+            logging.info(f'Epoch {epoch + 1}/{epochs} - Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.4f}, Val Loss: {val_loss:.6f}, Best Val Acc: {best_val_acc:.4f}, LR: {optimizer.param_groups[0]['lr']:.8f}')
+
+            # Check early stopping condition
+            if epochs_overfit >= patience or epochs_no_improve >= patience:
+                pbar.write(f'Early stopping triggered at epoch {epoch + 1}')
+                pbar.close()  # Close the progress bar
+                break
+
+    except KeyboardInterrupt:
+        print("Training interrupted by user.")
+        pbar.close()
 
     # Evaluate model on test set after training is complete (if necessary)
-    test_loss, test_accuracy = evaluate_test(model, dataloaders['test'], criterion, device)
+    test_loss, test_accuracy = evaluate_test(model, dataloaders['test'], criterion, device, train_df['character'].unique())
+
     print(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
     logging.info(f'Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
+    
+        # Save the final model after training
+    final_model_path = f'C:/Users/jaspa/Grant ML/Models/{current_datetime_string} 25 char big model.pth'
+    torch.save(model.state_dict(), final_model_path)
+    print(f'Final model saved at {final_model_path}')
 
 if __name__ == '__main__':
     main()
