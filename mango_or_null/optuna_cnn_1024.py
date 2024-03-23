@@ -469,7 +469,7 @@ def main():
     
     # Set Some Variables
     study_name = current_datetime_string + "Basic CNN - Classify Mang0 or Null Fox"
-    batch_size = 256
+    batch_size = 32
 
     # Set up logging file
     log_file = 'data\\mango_or_null\\logs\\' + study_name + ' Log.txt'
@@ -483,7 +483,7 @@ def main():
     study = optuna.create_study(study_name = study_name,
                                 sampler = sampler,
                                 direction = "minimize",
-                                # storage = "mysql+pymysql://root:MomentusPigs@localhost:3306/optuna_trials",
+                                storage = "mysql+pymysql://root:MomentusPigs@localhost:3306/optuna_trials",
                                 )
 
     objective_with_loaders = lambda trial: objective(trial, loaders, study_name = study_name)
