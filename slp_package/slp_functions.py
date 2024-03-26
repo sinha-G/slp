@@ -1,4 +1,6 @@
 import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+import numpy as np
 
 def one_hot_encode_flags(flag_enum, bitmask):
     """
@@ -130,7 +132,7 @@ def extract_label(df, label_info):
     if label_column not in df.columns:
         raise KeyError(f"{label_column} not found in the DataFrame columns")
     
-    df['label'] = df[label_column]
+    df['labels'] = df[label_column]
     return df
 
 
@@ -157,18 +159,62 @@ def prepare_data_for_training(source_data, general_features, player_features, op
 
     # Extract and set the label for training
     merged_df = extract_label(merged_df, label_info)
-
+    
+    merged_df['lenght'] -= 123
+    
     # Define the order of columns to be selected
     general_feature_columns = list(general_features.keys())
     player_feature_columns = [f'player_{feature}' for feature in player_features.keys()]
     opposing_player_feature_columns = [f'opposing_player_{feature}' for feature in opposing_player_features.keys()]
     input_path_column = ['player_inputs_np_save_path']
-    label_column = ['label']
+    length_column = ['length']
+    label_column = ['labels']
 
     # Combine all columns in the desired order
-    final_columns = general_feature_columns + player_feature_columns + opposing_player_feature_columns + input_path_column + label_column
+    final_columns = general_feature_columns + player_feature_columns + opposing_player_feature_columns + input_path_column + length_column + label_column
 
     # Select only the specified columns from the DataFrame
     final_df = merged_df[final_columns]
 
     return final_df
+
+
+
+def segment_overlap_info(df, segment_length_power):
+    """
+    Calculates segment overlap information for each label based on the segment length power.
+
+    :param df: DataFrame containing the labels and game lengths.
+    :param segment_length_power: The power used to calculate the segment length.
+    :return: DataFrame with segment overlap information for each label.
+    """
+    unique_labels = df['labels'].unique()
+    segment_length = 2 ** segment_length_power
+
+    # Initialize a list to hold the data for the new DataFrame
+    data_list = []
+
+    for label in unique_labels:
+        label_data = {'labels': label}
+        game_lengths = df.loc[df['labels'] == label, 'length']
+
+        for i in range(segment_length_power):
+            segment_shift = 2 ** (segment_length_power - i)
+            num_segments = sum(game_lengths - segment_length) // segment_shift
+            label_data[f'shift_by_{segment_shift}'] = num_segments
+
+        data_list.append(label_data)
+
+    # Create a DataFrame from the list of data
+    info_df = pd.DataFrame(data_list)
+
+    # Including the count of each label
+    label_counts = df['labels'].value_counts().rename('value_count').reset_index()
+    label_counts.columns = ['labels', 'value_count']
+    info_df = pd.merge(label_counts, info_df, on='labels')
+
+    # Reorder the columns to have 'value_count' right after 'labels'
+    cols = ['labels', 'value_count'] + [col for col in info_df.columns if col not in ['labels', 'value_count']]
+    info_df = info_df[cols]
+
+    return info_df
