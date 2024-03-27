@@ -3,9 +3,10 @@
 <h2> Milestones </h2>
 
 Some of the highlights from the work so far are:
-* Fox-Sheik Binary Classification from their Inputs with >99% Accuracy
-* Top-5 Character Multi Classification from their Inputs with >99% Accuracy
+* Fox-Sheik Binary Classification from inputs with >99% Accuracy
+* Top-5 Character Multi Classification from inputs with >99% Accuracy
 * Classify Fox's opponent from Fox's inputs Binary Classification with >65% Accuracy
+* Classify Mango's Fox vs Null's Fox from inputs Binary Classification with >99% Accuracy
 
 <h2> To Do: </h2>
 
