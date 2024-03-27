@@ -160,7 +160,7 @@ def prepare_data_for_training(source_data, general_features, player_features, op
     # Extract and set the label for training
     merged_df = extract_label(merged_df, label_info)
     
-    merged_df['lenght'] -= 123
+    merged_df['length'] -= 123
     
     # Define the order of columns to be selected
     general_feature_columns = list(general_features.keys())
