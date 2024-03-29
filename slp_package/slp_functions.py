@@ -52,6 +52,7 @@ def create_merged_game_data_df(df_list, no_teams_2_player = True):
                         ])
     return df
 
+################# remove later #####################
 def apply_general_filters(df, filters):
     """
     Applies filters to the dataframe based on the provided dictionary of filters.
@@ -135,8 +136,6 @@ def extract_label(df, label_info):
     df['labels'] = df[label_column]
     return df
 
-
-
 def prepare_data_for_training(source_data, general_features, player_features, opposing_player_features, label_info):
     """
     Prepares data for training based on specified features and filters.
@@ -178,7 +177,7 @@ def prepare_data_for_training(source_data, general_features, player_features, op
 
     return final_df
 
-
+################################################
 
 def segment_overlap_info(df, segment_length_power):
     """
