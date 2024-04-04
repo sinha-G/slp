@@ -140,7 +140,7 @@ class InputDataSet():
         general_feature_columns = list(self.general_features.keys())
         player_feature_columns = [f'player_{feature}' for feature in self.player_features.keys()]
         opposing_player_feature_columns = [f'opposing_player_{feature}' for feature in self.opposing_player_features.keys()]
-        input_path_column = ['player_inputs_np_save_path']
+        input_path_column = ['player_inputs_np_sub_path']
         length_column = ['length']
         label_column = ['labels']
 
@@ -206,7 +206,7 @@ class InputDataSet():
         # Sort the label_info DataFrame by 'Count' in descending order for better readability
         label_info_df = label_info_df.sort_values(by='Count', ascending=False).reset_index(drop=True)
         
-        return_columns = ['player_inputs_np_save_path',  'length', 'labels','float_num_segments']
+        return_columns = ['player_inputs_np_sub_path',  'length', 'labels','float_num_segments']
 
         self.divide_games_df_input = df[return_columns]
         self.segment_length_power = segment_length_power
@@ -286,7 +286,7 @@ class InputDataSet():
             train_dfs.append(train_label_df)
 
         # Concatenate all the dataframes in each list to create the final splits
-        return_columns = ['player_inputs_np_save_path',  'length', 'num_segments','labels']
+        return_columns = ['player_inputs_np_sub_path',  'length', 'num_segments','labels']
         test_df = pd.concat(test_dfs, ignore_index=True)[return_columns]
         val_df = pd.concat(val_dfs, ignore_index=True)[return_columns] if val else pd.DataFrame(columns=return_columns)
         train_df = pd.concat(train_dfs, ignore_index=True)[return_columns]
@@ -367,9 +367,9 @@ class InputDataSet():
             # Return immediately if there are no segments to process
             if num_segments == 0:
                 return
-            
+            path = path.replace('\\','/')
             # Load the game data from the specified path
-            with gzip.open(path, 'rb') as f:
+            with gzip.open('/workspace/melee_project_data/input_np/' + path, 'rb') as f:
                 inputs_array = np.load(f)
             
             # Initialize an array to hold the extracted segments
@@ -391,7 +391,7 @@ class InputDataSet():
         
         # Prepare tasks for parallel processing
         tasks = [
-            (row['player_inputs_np_save_path'], row['labels'], row['length'], row['num_segments']) 
+            (row['player_inputs_np_sub_path'], row['labels'], row['length'], row['num_segments']) 
             for index, row in df.iterrows()
         ]
         
