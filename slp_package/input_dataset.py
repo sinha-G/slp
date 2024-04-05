@@ -12,8 +12,8 @@ import tqdm
 from joblib import Parallel, delayed
 from multiprocessing import Manager
 
-sys.path.append('../..')
-from slp.slp_package.slp_functions import create_merged_game_data_df
+sys.path.append('..')
+from slp_package.slp_functions import create_merged_game_data_df
 
 class InputDataSet():
     # list atributes
