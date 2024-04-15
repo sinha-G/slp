@@ -335,6 +335,8 @@ class InputDataSet():
         # Add 'segment_index' to the DataFrame to keep track of each segment within its group
         df_repeated['segment_index'] = segment_indices
         
+        df_repeated['segment_length'] = 2 ** self.segment_length_power
+        
         return df_repeated
 
     # def create_training_numpy(df, segment_length_power):
@@ -426,3 +428,17 @@ class InputDataSet():
             return X_train, X_test, X_val, y_train, y_test, y_val
         
         return X_train, X_test, y_train, y_test 
+    
+    
+    def train_test_split_dataframes(self, test_ratio = .15, val_ratio = .15, val = True):
+        test_df, val_df, train_df = self.divide_games(test_ratio, val_ratio, val)
+        
+        X_train_df = self.create_training_dataframe(train_df)
+        
+        X_test_df = self.create_training_dataframe(test_df)
+        
+        if not val_df.empty:
+            X_val_df = self.create_training_dataframe(val_df)
+            return X_train_df, X_test_df, X_val_df
+    
+        return X_train_df, X_test_df   
