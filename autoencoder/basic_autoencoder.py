@@ -80,7 +80,7 @@ def main():
     print(dataset.dataset['labels'].value_counts())
     dataset.dataset.head()
     
-    labels_order =  dataset.number_of_segments_per_game(12,1000)
+    labels_order =  dataset.number_of_segments_per_game(12,6000)
     print(labels_order)
     labels_order = labels_order['Label'].values
 
