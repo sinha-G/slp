@@ -1,4 +1,5 @@
-from sktime.classification.deep_learning.cnn import CNNClassifier
+from sktime.classification.deep_learning.cnn import CNNClassifier, LSTMFCNClassifier
+from sktime.classification.kernel_based import RocketClassifier
 
 import torch
 import torch.nn as nn
@@ -25,7 +26,7 @@ import gc
 import logging
 
 def main():
-     # Ensure reproducibility (TODO: fix this - I don't think this works)
+    # Ensure reproducibility (TODO: fix this - I don't think this works)
     seed = 42
     torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True

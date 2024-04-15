@@ -37,21 +37,22 @@ def create_merged_game_data_df(df_list, no_teams_2_player = True):
     
     if 'mango' in df_list:
         df = pd.concat([df,
-                        pd.read_parquet("C:\\Users\\jaspa\\Grant ML\\slp\\data\\mango_" + filter + "_df.parquet"),
+                        pd.read_parquet("/workspace/melee_project_data/data/mango_" + filter + "_df.parquet"),
                         ])
     if 'ranked' in df_list:
         df = pd.concat([df,
-                        pd.read_parquet("C:\\Users\\jaspa\\Grant ML\\slp\\data\\ranked_" + filter + "_df_1.parquet"),
-                        pd.read_parquet("C:\\Users\\jaspa\\Grant ML\\slp\\data\\ranked_" + filter + "_df_2.parquet"),
-                        pd.read_parquet("C:\\Users\\jaspa\\Grant ML\\slp\\data\\ranked_" + filter + "_df_3.parquet"),
+                        pd.read_parquet("/workspace/melee_project_data/data/ranked_" + filter + "_df_1.parquet"),
+                        pd.read_parquet("/workspace/melee_project_data/data/ranked_" + filter + "_df_2.parquet"),
+                        pd.read_parquet("/workspace/melee_project_data/data/ranked_" + filter + "_df_3.parquet"),
                         ])
     if 'public' in df_list:
         df = pd.concat([df, 
-                        pd.read_parquet("C:\\Users\\jaspa\\Grant ML\\slp\\data\\public_" + filter + "_df_1.parquet"),
-                        pd.read_parquet("C:\\Users\\jaspa\\Grant ML\\slp\\data\\public_" + filter + "_df_2.parquet"),
+                        pd.read_parquet("/workspace/melee_project_data/data/public_" + filter + "_df_1.parquet"),
+                        pd.read_parquet("/workspace/melee_project_data/data/public_" + filter + "_df_2.parquet"),
                         ])
     return df
 
+################# remove later #####################
 def apply_general_filters(df, filters):
     """
     Applies filters to the dataframe based on the provided dictionary of filters.
@@ -135,8 +136,6 @@ def extract_label(df, label_info):
     df['labels'] = df[label_column]
     return df
 
-
-
 def prepare_data_for_training(source_data, general_features, player_features, opposing_player_features, label_info):
     """
     Prepares data for training based on specified features and filters.
@@ -160,7 +159,7 @@ def prepare_data_for_training(source_data, general_features, player_features, op
     # Extract and set the label for training
     merged_df = extract_label(merged_df, label_info)
     
-    merged_df['lenght'] -= 123
+    merged_df['length'] -= 123
     
     # Define the order of columns to be selected
     general_feature_columns = list(general_features.keys())
@@ -178,7 +177,7 @@ def prepare_data_for_training(source_data, general_features, player_features, op
 
     return final_df
 
-
+################################################
 
 def segment_overlap_info(df, segment_length_power):
     """
