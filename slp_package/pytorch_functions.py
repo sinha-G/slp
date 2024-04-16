@@ -147,7 +147,7 @@ def train_model(model, criterion, optimizer, loaders, device, num_epochs=1):
             total += labels.size(0)
             train_correct += (predicted == labels).sum().item()
             train_loader_tqdm.set_postfix(loss=(train_loss / total), accuracy=(100.0 * train_correct / total))
-            
+            #
 def evaluate_model(model, test_loader, device):
     """
     Evaluates the model on the test dataset.
