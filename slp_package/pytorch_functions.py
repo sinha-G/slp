@@ -128,7 +128,12 @@ def train_model(model, criterion, optimizer, loaders, device, num_epochs=1):
             # Runs the forward pass with autocasting.
             with autocast():
                 outputs = model(inputs)
-                loss = criterion(outputs, labels)
+                # print("Outputs type:", outputs.dtype)
+                # print("Labels type:", labels.dtype)
+                # print("Outputs device:", outputs.device)
+                # print("Labels device:", labels.device)
+                loss = criterion(outputs, labels)  # Compute loss
+
             
             # Scales loss and calls backward() to create scaled gradients
             scaler.scale(loss).backward()
@@ -148,6 +153,7 @@ def train_model(model, criterion, optimizer, loaders, device, num_epochs=1):
             train_correct += (predicted == labels).sum().item()
             train_loader_tqdm.set_postfix(loss=(train_loss / total), accuracy=(100.0 * train_correct / total))
             #
+            
 def evaluate_model(model, test_loader, device):
     """
     Evaluates the model on the test dataset.
@@ -169,3 +175,35 @@ def evaluate_model(model, test_loader, device):
             test_correct += (predicted == labels).sum().item()
     
     print(f'Test Accuracy: {100.0 * test_correct / test_total}%')
+    
+
+def predict(model, test_loader, device):
+    """
+    Evaluates the model on the test dataset and returns predictions as a numpy array,
+    displaying a progress bar during the evaluation.
+
+    Args:
+        model (nn.Module): The trained model.
+        test_loader (DataLoader): DataLoader for the test dataset.
+        device (torch.device): The device to evaluate on.
+
+    Returns:
+        numpy.ndarray: Numpy array of predictions.
+    """
+    model.eval()
+    predictions = []
+    # Initialize tqdm progress bar
+    pbar = tqdm(total=len(test_loader), desc="Evaluating", leave=False)
+
+    with torch.no_grad():
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs.data, 1)
+            predictions.extend(predicted.cpu().numpy())  # Collecting predictions
+
+            # Update the progress bar
+            pbar.update(1)
+
+    pbar.close()  # Ensure the progress bar is closed after the loop
+    return predictions
