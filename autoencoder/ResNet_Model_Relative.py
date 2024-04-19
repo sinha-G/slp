@@ -11,7 +11,7 @@ class Bottleneck(nn.Module):
         self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=1, padding=0)
         self.batch_norm1 = nn.BatchNorm1d(out_channels)
 
-        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=3, stride=stride, padding=1)
+        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=9, stride=stride, padding=4)
         self.batch_norm2 = nn.BatchNorm1d(out_channels)
 
         self.conv3 = nn.Conv1d(out_channels, out_channels * self.expansion, kernel_size=1, stride=1, padding=0)
@@ -67,15 +67,15 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.in_channels = 64
 
-        self.conv1 = nn.Conv1d(num_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.conv1 = nn.Conv1d(num_channels, 64, kernel_size=49, stride=4, padding=24, bias=False)
         self.batch_norm1 = nn.BatchNorm1d(64)
         self.relu = nn.ReLU()
-        self.max_pool = nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
+        self.max_pool = nn.MaxPool1d(kernel_size=9, stride=4, padding=4)
 
         self.layer1 = self._make_layer(ResBlock, layer_list[0], planes=64)
-        self.layer2 = self._make_layer(ResBlock, layer_list[1], planes=128, stride=2)
-        self.layer3 = self._make_layer(ResBlock, layer_list[2], planes=256, stride=2)
-        self.layer4 = self._make_layer(ResBlock, layer_list[3], planes=512, stride=2)
+        self.layer2 = self._make_layer(ResBlock, layer_list[1], planes=128, stride=4)
+        self.layer3 = self._make_layer(ResBlock, layer_list[2], planes=256, stride=4)
+        self.layer4 = self._make_layer(ResBlock, layer_list[3], planes=512, stride=4)
 
         self.avgpool = nn.AdaptiveAvgPool1d(1)
         # self.convLast = nn.Conv1d(2048,256,8)
