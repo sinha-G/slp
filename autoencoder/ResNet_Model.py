@@ -2,6 +2,7 @@ import torch
 import torch.nn as  nn
 import torch.nn.functional as F
 
+# https://github.com/JayPatwardhan/ResNet-PyTorch
 
 class Bottleneck(nn.Module):
     expansion = 4
