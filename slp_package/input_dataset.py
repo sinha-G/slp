@@ -28,7 +28,7 @@ class InputDataSet():
         # The proceeding 3 attributes are assigned in the number_of_segments_per_game method
         self.divide_games_df_input = None
         self.num_segments_per_label = 0
-        self.segment_length_power = 0
+        self.segment_length = 0
         
     def prepare_data_for_training(self):
         """
@@ -152,7 +152,7 @@ class InputDataSet():
 
         return final_df
     
-    def number_of_segments_per_game(self, segment_length_power, num_segments_per_label):
+    def number_of_segments_per_game(self, segment_length, num_segments_per_label):
         """
         Calculate the floating-point number of segments for each game in the dataframe based on the game's length
         and the desired total number of segments per label.
@@ -170,7 +170,7 @@ class InputDataSet():
         df = self.dataset.copy()
 
         # Calculate segment length as a power of 2
-        segment_length = 2 ** segment_length_power
+        # segment_length = 2 ** segment_length_power
 
         # Filter out games where length is less than or equal to the segment length
         df = df[df['length'] > segment_length]
@@ -209,7 +209,7 @@ class InputDataSet():
         return_columns = ['player_inputs_np_sub_path',  'length', 'labels','float_num_segments']
 
         self.divide_games_df_input = df[return_columns]
-        self.segment_length_power = segment_length_power
+        self.segment_length = segment_length
         self.num_segments_per_label = num_segments_per_label
 
         return label_info_df
@@ -312,7 +312,7 @@ class InputDataSet():
         DataFrame: A new DataFrame where each row represents a segment, including the start index of each segment.
         """
         # Calculate the segment length as a power of 2
-        segment_length = 2 ** self.segment_length_power
+        # segment_length = 2 ** self.segment_length_power
         
         # Retrieve the 'num_segments' column as an array to determine how many times to repeat each row
         repeats = df['num_segments'].values
@@ -327,7 +327,7 @@ class InputDataSet():
         segment_indices = np.concatenate([np.arange(n, dtype=np.int16) for n in repeats])
         
         # Calculate the start index of each segment within the game
-        df_repeated['segment_start_index'] = ((df_repeated['length'] - segment_length) // df_repeated['num_segments']) * segment_indices
+        df_repeated['segment_start_index'] = ((df_repeated['length'] - self.segment_length) // df_repeated['num_segments']) * segment_indices
         
         # Drop columns that are no longer necessary after computing 'segment_start_index'
         df_repeated = df_repeated.drop(columns=['length', 'num_segments'])
@@ -335,7 +335,7 @@ class InputDataSet():
         # Add 'segment_index' to the DataFrame to keep track of each segment within its group
         df_repeated['segment_index'] = segment_indices
         
-        df_repeated['segment_length'] = 2 ** self.segment_length_power
+        df_repeated['segment_length'] = self.segment_length
         
         return df_repeated
 
@@ -389,7 +389,7 @@ class InputDataSet():
             shared_list.append((segments_array, [label] * num_segments))
         
         # Calculate the segment length using the power of 2
-        segment_length = 2 ** self.segment_length_power
+        segment_length = self.segment_length_power
         
         # Prepare tasks for parallel processing
         tasks = [
