@@ -64,11 +64,20 @@ class ResNet(nn.Module):
             nn.Linear(512 * Encoder_Bottleneck.expansion * 8, 64),
             nn.BatchNorm1d(64),
             nn.ReLU(),
-            nn.Linear(64,27)
+            nn.Linear(64,27),
+            nn.BatchNorm1d(27),
+            nn.ReLU()
         )
         
         ###################### Decoder Part ######################
-        
+        self.expand = nn.Sequential(
+            nn.Linear(27,64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Linear(64,512 * Encoder_Bottleneck.expansion * 8),
+            nn.BatchNorm1d(512 * Encoder_Bottleneck.expansion * 8),
+            nn.ReLU()
+        )
 
     def forward(self, x):
         ###################### Encoder Part ######################
@@ -83,6 +92,9 @@ class ResNet(nn.Module):
         x = self.reduce(x)
         
         ####################### Decoder Part #######################
+        x = self.expand(x)
+        x = x.view(512 * Encoder_Bottleneck.expansion,8)
+
 
         return x
 
