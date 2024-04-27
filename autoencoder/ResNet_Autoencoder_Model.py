@@ -37,7 +37,7 @@ class Encoder_Bottleneck(nn.Module):
     
 class Decoder_Bottleneck(nn.Module):
     expansion = 4
-    def __init__(self, in_channels, out_channels, i_downsample=None, stride=1, output_padding=0):
+    def __init__(self, in_channels, out_channels, i_upsample=None, stride=1, output_padding=0, last_layer_of_block = False):
         super(Decoder_Bottleneck, self).__init__()
 
         self.conv1 = nn.ConvTranspose1d(in_channels, out_channels, kernel_size=1, stride=1, padding=0)
@@ -46,10 +46,10 @@ class Decoder_Bottleneck(nn.Module):
         self.conv2 = nn.ConvTranspose1d(out_channels, out_channels, kernel_size=3, stride=stride, padding=1, output_padding=output_padding)
         self.batch_norm2 = nn.BatchNorm1d(out_channels)
 
-        self.conv3 = nn.ConvTranspose1d(out_channels, out_channels * self.expansion, kernel_size=1, stride=1, padding=0)
-        self.batch_norm3 = nn.BatchNorm1d(out_channels * self.expansion)
+        self.conv3 = nn.ConvTranspose1d(out_channels, out_channels * (self.expansion - 2 * last_layer_of_block), kernel_size=1, stride=1, padding=0)
+        self.batch_norm3 = nn.BatchNorm1d(out_channels * (self.expansion - 2 * last_layer_of_block))
 
-        self.i_downsample = i_downsample
+        self.i_upsample = i_upsample
         self.relu = nn.ReLU()
 
     def forward(self, x):
@@ -57,9 +57,8 @@ class Decoder_Bottleneck(nn.Module):
         x = self.relu(self.batch_norm1(self.conv1(x)))
         x = self.relu(self.batch_norm2(self.conv2(x)))
         x = self.batch_norm3(self.conv3(x))
-
-        if self.i_downsample is not None:
-            identity = self.i_downsample(identity)
+        if self.i_upsample is not None:
+            identity = self.i_upsample(identity)
 
         x += identity
         x = self.relu(x)
@@ -112,19 +111,32 @@ class ResNet(nn.Module):
         self.layer5 = self._make_decoder_layer(layer_list[3], planes=512, stride=2)
         self.layer6 = self._make_decoder_layer(layer_list[2], planes=256, stride=2, output_padding=1)
         self.layer7 = self._make_decoder_layer(layer_list[1], planes=128, stride=2, output_padding=1)
-        self.layer8 = self._make_decoder_layer(layer_list[0], planes=64)
+        self.layer8 = self._make_decoder_layer(layer_list[0], planes=64, last_layer=True)
+        
+        self.lastblock = nn.Sequential(
+            nn.ConvTranspose1d(self.in_channels, 64, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.ConvTranspose1d(64, 64, kernel_size=3, stride=1, padding=1, output_padding=0),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.ConvTranspose1d(64, 9 , kernel_size=1, stride=1, padding=0),
+        )
 
     def forward(self, x):
         ###################### Encoder Part ######################
-        
+        print(self.in_channels)
         # x = self.begin(x)
         x = self.layer1(x)
+        # print(self.in_channels)
         x = self.layer2(x)
+        # print(self.in_channels)
         x = self.layer3(x)
+        # print(self.in_channels)
         x = self.layer4(x)
         # x = self.layer5(x)
         # x = self.layer6(x)
-
+        # print(self.in_channels)
         x = x.reshape(x.size(0), -1,)
 
         f = nn.Identity()
@@ -136,15 +148,19 @@ class ResNet(nn.Module):
         ####################### Decoder Part #######################
         #print(x.shape)
         x = self.expand(x)
-        #print(x.shape)
+        # print(x.shape)
+        # print(self.in_channels)
+        
         x = torch.reshape(x, (x.size(0), 2048, 8))
         # x = x.view(512 * Encoder_Bottleneck.expansion,8)
-        print(x.shape)
+        # print(x.shape)
 
         x = self.layer5(x)
         x = self.layer6(x)
         x = self.layer7(x)
         x = self.layer8(x)
+        
+        x = self.lastblock(x)
 
         return x
 
@@ -167,23 +183,24 @@ class ResNet(nn.Module):
             
         return nn.Sequential(*layers)
     
-    def _make_decoder_layer(self, blocks, planes, stride=1, output_padding = 0):
+    def _make_decoder_layer(self, blocks, planes, stride=1, output_padding = 0, last_layer = False):
         ii_upsample = None
         layers = []
         
-        
-
-        if stride != 1 or self.in_channels != planes*Decoder_Bottleneck.expansion:
-            ii_upsample = nn.Sequential(
-                nn.ConvTranspose1d(self.in_channels, planes*Decoder_Bottleneck.expansion, kernel_size=1, stride=stride, output_padding=output_padding),
-                nn.BatchNorm1d(planes*Decoder_Bottleneck.expansion)
-            )
-
-        layers.append(Decoder_Bottleneck(self.in_channels, planes, i_downsample=ii_upsample, stride=stride, output_padding=output_padding))
-        self.in_channels = planes*Decoder_Bottleneck.expansion
-
         for i in range(blocks-1):
             layers.append(Decoder_Bottleneck(self.in_channels, planes))
+        
+        if last_layer:
+            return nn.Sequential(*layers)
+        
+        if stride != 1 or self.in_channels != planes*Decoder_Bottleneck.expansion:
+            ii_upsample = nn.Sequential(
+                nn.ConvTranspose1d(self.in_channels, planes*(Decoder_Bottleneck.expansion - 2), kernel_size=1, stride=stride, output_padding=output_padding),
+                nn.BatchNorm1d(planes*(Decoder_Bottleneck.expansion-2))
+            )
+
+        layers.append(Decoder_Bottleneck(self.in_channels, planes, i_upsample=ii_upsample, stride=stride, output_padding=output_padding, last_layer_of_block=True))
+        self.in_channels = planes*(Decoder_Bottleneck.expansion - 2)
 
         return nn.Sequential(*layers)
 
