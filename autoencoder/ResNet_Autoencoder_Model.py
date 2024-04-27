@@ -56,8 +56,7 @@ class Decoder_Bottleneck(nn.Module):
         identity = x.clone()
         x = self.relu(self.batch_norm1(self.conv1(x)))
         x = self.relu(self.batch_norm2(self.conv2(x)))
-        x = self.conv3(x)
-        x = self.batch_norm3(x)
+        x = self.batch_norm3(self.conv3(x))
 
         if self.i_downsample is not None:
             identity = self.i_downsample(identity)
@@ -127,6 +126,10 @@ class ResNet(nn.Module):
         # x = self.layer6(x)
 
         x = x.reshape(x.size(0), -1,)
+
+        f = nn.Identity()
+        x = f(x)
+
         x = self.reduce(x)
         #print(x.shape)
         
@@ -168,8 +171,7 @@ class ResNet(nn.Module):
         ii_upsample = None
         layers = []
         
-        for i in range(blocks-1):
-            layers.append(Decoder_Bottleneck(self.in_channels, planes))
+        
 
         if stride != 1 or self.in_channels != planes*Decoder_Bottleneck.expansion:
             ii_upsample = nn.Sequential(
@@ -179,13 +181,16 @@ class ResNet(nn.Module):
 
         layers.append(Decoder_Bottleneck(self.in_channels, planes, i_downsample=ii_upsample, stride=stride, output_padding=output_padding))
         self.in_channels = planes*Decoder_Bottleneck.expansion
-            
+
+        for i in range(blocks-1):
+            layers.append(Decoder_Bottleneck(self.in_channels, planes))
+
         return nn.Sequential(*layers)
 
         
         
 def ResNet_Autoencoder( channels=9):
-    return ResNet([3,4,6,3,2,1],  channels)
+    return ResNet([3,4,6,3],  channels)
     
 
 
