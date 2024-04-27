@@ -125,7 +125,7 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         ###################### Encoder Part ######################
-        print(self.in_channels)
+        # print(self.in_channels)
         # x = self.begin(x)
         x = self.layer1(x)
         # print(self.in_channels)
