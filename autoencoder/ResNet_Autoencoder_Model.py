@@ -93,14 +93,14 @@ class ResNet(nn.Module):
             nn.Linear(512 * Encoder_Bottleneck.expansion * 8, 64),
             # nn.BatchNorm1d(64),
             nn.ReLU(),
-            nn.Linear(64,27),
+            nn.Linear(64,64),
             # nn.BatchNorm1d(27),
             nn.ReLU()
         )
         
         ###################### Decoder Part ######################
         self.expand = nn.Sequential(
-            nn.Linear(27,64),
+            nn.Linear(64,64),
             # nn.BatchNorm1d(64),
             nn.ReLU(),
             nn.Linear(64,512 * Encoder_Bottleneck.expansion * 8),
