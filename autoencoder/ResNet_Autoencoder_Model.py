@@ -70,7 +70,7 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         
         #################### Encoder Part ####################
-        self.in_channels = 9
+        self.in_channels = num_channels
 
         # Think about putting some layers before the blocks:
         # self.begin = nn.Sequential(
@@ -120,7 +120,7 @@ class ResNet(nn.Module):
             nn.ConvTranspose1d(64, 64, kernel_size=3, stride=1, padding=1, output_padding=0),
             nn.BatchNorm1d(64),
             nn.ReLU(),
-            nn.ConvTranspose1d(64, 9 , kernel_size=1, stride=1, padding=0),
+            nn.ConvTranspose1d(64, num_channels, kernel_size=1, stride=1, padding=0),
         )
 
     def forward(self, x):
