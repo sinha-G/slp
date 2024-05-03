@@ -50,7 +50,7 @@ class Encoder(nn.Module):
         self.layer1 = self._make_encoder_layer(layer_list[0], planes=64)
         self.layer2 = self._make_encoder_layer(layer_list[1], planes=128, stride=2)
         self.layer3 = self._make_encoder_layer(layer_list[2], planes=256, stride=2)
-        self.layer4 = self._make_encoder_layer(layer_list[3], planes=512, stride=2, downsample_padding=1)
+        self.layer4 = self._make_encoder_layer(layer_list[3], planes=512, stride=2, downsample_padding=0)
         
         self.reduce = nn.Sequential(
             nn.Linear(512 * Encoder_Bottleneck.expansion * 8, 64),
@@ -86,7 +86,7 @@ class Encoder(nn.Module):
             )
         elif stride != 1:
             ii_downsample = nn.Sequential(
-                nn.Conv1d(self.in_channels, planes*Encoder_Bottleneck.expansion, kernel_size=2, padding = downsample_padding, stride=stride),
+                nn.Conv1d(self.in_channels, planes*Encoder_Bottleneck.expansion, kernel_size=1, padding = downsample_padding, stride=stride),
                 nn.BatchNorm1d(planes*Encoder_Bottleneck.expansion)
             )
             
@@ -153,7 +153,7 @@ class Decoder(nn.Module):
             nn.ReLU()
         )
 
-        self.layer5 = self._make_decoder_layer(layer_list[3], planes=512, stride=2, upsample_padding=1, upsample_output_padding=1)
+        self.layer5 = self._make_decoder_layer(layer_list[3], planes=512, stride=2)
         self.layer6 = self._make_decoder_layer(layer_list[2], planes=256, stride=2, output_padding=1)
         self.layer7 = self._make_decoder_layer(layer_list[1], planes=128, stride=2, output_padding=1)
         self.layer8 = self._make_decoder_layer(layer_list[0], planes=64, last_layer=True)
@@ -195,7 +195,8 @@ class Decoder(nn.Module):
         
         if stride != 1 or self.in_channels_decode != planes*Decoder_Bottleneck.expansion:
             ii_upsample = nn.Sequential(
-                nn.ConvTranspose1d(self.in_channels_decode, planes*(Decoder_Bottleneck.expansion - 2), kernel_size=2, stride=stride, padding=upsample_padding, output_padding=upsample_output_padding),
+                nn.Upsample(scale_factor = (1,stride)),
+                nn.ConvTranspose1d(self.in_channels_decode, planes*(Decoder_Bottleneck.expansion - 2), kernel_size=1, stride=1, padding=upsample_padding, output_padding=upsample_output_padding),
                 nn.BatchNorm1d(planes*(Decoder_Bottleneck.expansion-2))
             )
 
