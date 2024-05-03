@@ -30,6 +30,7 @@ class Encoder_Bottleneck(nn.Module):
 
         if self.i_downsample is not None:
             identity = self.i_downsample(identity)
+            # print('identity',identity)
 
         x += identity
         x = self.relu(x)
@@ -59,6 +60,8 @@ class Decoder_Bottleneck(nn.Module):
         x = self.batch_norm3(self.conv3(x))
         if self.i_upsample is not None:
             identity = self.i_upsample(identity)
+        # print('x',x)
+            # print('identity',identity)
 
         x += identity
         x = self.relu(x)
@@ -94,8 +97,8 @@ class ResNet(nn.Module):
             # nn.BatchNorm1d(64),
             nn.ReLU(),
             nn.Linear(64,64),
-            # nn.BatchNorm1d(27),
-            nn.ReLU()
+            # nn.BatchNorm1d(64),
+            # nn.ReLU()
         )
         
         ###################### Decoder Part ######################
@@ -207,7 +210,8 @@ class ResNet(nn.Module):
         
         
 def ResNet_Autoencoder( channels=9):
-    return ResNet([3,4,6,3],  channels)
+    # return ResNet([3,4,6,3],  channels)
+    return ResNet([2,2,2,2],  channels)
     
 
 
