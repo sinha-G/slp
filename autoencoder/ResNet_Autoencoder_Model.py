@@ -162,7 +162,8 @@ class ResNet(nn.Module):
         
         x = self.lastblock(x)
 
-        return x
+        # return x
+        return torch.sigmoid(x)
 
         
     def _make_encoder_layer(self, blocks, planes, stride=1):
@@ -207,7 +208,7 @@ class ResNet(nn.Module):
         
         
 def ResNet_Autoencoder( channels=9):
-    return ResNet([3,4,6,3],  channels)
+    return ResNet([1,1,1,1],  channels)
     
 
 

@@ -497,6 +497,10 @@ class InputDataSet():
         test_df = pd.concat(test_dfs, ignore_index=True)[return_columns]
         val_df = pd.concat(val_dfs, ignore_index=True)[return_columns] if val else pd.DataFrame(columns=return_columns)
         train_df = pd.concat(train_dfs, ignore_index=True)[return_columns]
+
+        test_df['length'] = segment_length
+        val_df['length'] = segment_length
+        train_df['length'] = segment_length
         
         # Encode the labels for training
         label_encoder = LabelEncoder()
