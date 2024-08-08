@@ -46,10 +46,25 @@ class Encoder(nn.Module):
         self.layer3 = self._make_encoder_layer(layer_list[2], planes=256, stride=2)
         self.layer4 = self._make_encoder_layer(layer_list[3], planes=512, stride=2)
         
-        self.reduce = nn.Sequential(
+        self.reduce5 = nn.Sequential(
             nn.Conv1d(4*512, self.bottleneck_size, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm1d(self.bottleneck_size),
             nn.ReLU()
+        )
+        # self.linear6 = nn.Sequential(
+        #     nn.Linear(in_features=3375, out_features=2048),
+        #     nn.ReLU(),
+        #     nn.BatchNorm1d(2048)
+        # )
+        # self.linear6 = nn.Sequential(
+        #     nn.Linear(in_features=3375, out_features=128),
+        #     nn.ReLU(),
+        #     nn.BatchNorm1d(128)
+        # )
+        self.linear6 = nn.Sequential(
+            nn.Linear(in_features=3375, out_features=128),
+            nn.ReLU(),
+            nn.BatchNorm1d(64)
         )
         
     def forward(self, x):
@@ -61,7 +76,9 @@ class Encoder(nn.Module):
         # print(x.shape)
         x = self.layer4(x)
         # print(x.shape)
-        x = self.reduce(x)
+        x = self.reduce5(x)
+        x = x.reshape(x.shape[0], -1)
+        x = self.linear6(x)
         return x
     
     def _make_encoder_layer(self, blocks, planes, stride=1, downsample_padding = 0):
@@ -123,6 +140,22 @@ class Decoder(nn.Module):
         self.bottleneck_size = bottleneck_size
         # self.identity_length = [60,30,15]
         self.identity_length = [3600, 1800, 900]
+        
+        # self.linear = nn.Sequential(
+        #     nn.Linear(2048, 3375),
+        #     nn.ReLU(),
+        #     nn.BatchNorm1d(3375)
+        # )
+        self.linear = nn.Sequential(
+            nn.Linear(128, 3375),
+            nn.ReLU(),
+            nn.BatchNorm1d(3375)
+        )
+        self.linear = nn.Sequential(
+            nn.Linear(64, 3375),
+            nn.ReLU(),
+            nn.BatchNorm1d(3375)
+        )
         self.expand = nn.Sequential(
             nn.ConvTranspose1d(self.bottleneck_size, 4*512, kernel_size=3, stride=2, padding=1, output_padding=1),
             nn.BatchNorm1d(4*512),
@@ -144,6 +177,8 @@ class Decoder(nn.Module):
         )
 
     def forward(self, x):
+        x = self.linear(x)
+        x = torch.reshape(x, (x.size(0), 15, 225))
         x = self.expand(x)
         x = self.layer5(x)
         x = self.layer6(x)
@@ -195,9 +230,9 @@ class Autoencoder(nn.Module):
         
         
 def ResNet_Autoencoder(channels=13):
-    return Autoencoder([3,4,23,3],  channels)
+    # return Autoencoder([3,4,23,3],  channels)
     # return Autoencoder([3,4,6,3], channels)
-    # return Autoencoder([2,2,2,2],  channels)
+    return Autoencoder([2,2,2,2],  channels)
     
 
 

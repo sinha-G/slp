@@ -54,13 +54,9 @@ class Encoder(nn.Module):
         
     def forward(self, x):
         x = self.layer1(x)
-        # print(x.shape)
         x = self.layer2(x)
-        # print(x.shape)
         x = self.layer3(x)
-        # print(x.shape)
         x = self.layer4(x)
-        # print(x.shape)
         x = self.reduce(x)
         return x
     
@@ -121,14 +117,13 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         self.in_channels_decode = 2048
         self.bottleneck_size = bottleneck_size
-        # self.identity_length = [60,30,15]
-        self.identity_length = [3600, 1800, 900]
+        self.identity_length = [60,30,15]
         self.expand = nn.Sequential(
             nn.ConvTranspose1d(self.bottleneck_size, 4*512, kernel_size=3, stride=2, padding=1, output_padding=1),
             nn.BatchNorm1d(4*512),
             nn.ReLU()
         )
-        self.layer5 = self._make_decoder_layer(layer_list[3], planes=512, stride=2,output_padding=1)
+        self.layer5 = self._make_decoder_layer(layer_list[3], planes=512, stride=2)
         self.layer6 = self._make_decoder_layer(layer_list[2], planes=256, stride=2, output_padding=1)
         self.layer7 = self._make_decoder_layer(layer_list[1], planes=128, stride=2, output_padding=1)
         self.layer8 = self._make_decoder_layer(layer_list[0], planes=64, last_layer=True)
@@ -194,7 +189,7 @@ class Autoencoder(nn.Module):
     
         
         
-def ResNet_Autoencoder(channels=13):
+def ResNet_Autoencoder( channels=13):
     return Autoencoder([3,4,23,3],  channels)
     # return Autoencoder([3,4,6,3], channels)
     # return Autoencoder([2,2,2,2],  channels)

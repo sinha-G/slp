@@ -153,6 +153,45 @@ def train_model(model, criterion, optimizer, loaders, device, num_epochs=1):
             train_correct += (predicted == labels).sum().item()
             train_loader_tqdm.set_postfix(loss=(train_loss / total), accuracy=(100.0 * train_correct / total))
             #
+
+# def train_model(model, criterion, optimizer, loaders, device, num_epochs=1):
+#     for epoch in range(num_epochs):
+#         model.train()
+#         train_loader_tqdm = tqdm(loaders['train'], desc=f'Epoch {epoch+1}/{num_epochs}', unit='batch')
+
+#         # Initialize variables for tracking gradient and parameter stats
+#         grad_max = float('-inf')
+#         grad_min = float('inf')
+        
+#         for inputs, labels in train_loader_tqdm:
+#             inputs, labels = inputs.to(device), labels.to(device)
+            
+#             optimizer.zero_grad()
+            
+#             outputs = model(inputs)
+#             loss = criterion(outputs, labels)
+#             loss.backward()
+
+#             # Track max and min of gradients
+#             for p in model.parameters():
+#                 if p.grad is not None:
+#                     batch_grad_max = p.grad.max().item()
+#                     batch_grad_min = p.grad.min().item()
+#                     grad_max = max(grad_max, batch_grad_max)
+#                     grad_min = min(grad_min, batch_grad_min)
+
+#             # clip_grad_norm_(model.parameters(), max_norm=1.0)
+#             optimizer.step()
+
+#             # Update the progress bar with current max/min gradient stats
+#             train_loader_tqdm.set_postfix(Grad_Max=grad_max, Grad_Min=grad_min, Loss=loss.item())
+
+#             # Reset max and min gradients for the next batch
+#             grad_max = float('-inf')
+#             grad_min = float('inf')
+
+#     return model
+
             
 def evaluate_model(model, test_loader, device):
     """
