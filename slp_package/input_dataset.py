@@ -389,7 +389,7 @@ class InputDataSet():
             shared_list.append((segments_array, [label] * num_segments))
         
         # Calculate the segment length using the power of 2
-        segment_length = self.segment_length_power
+        segment_length = self.segment_length
         
         # Prepare tasks for parallel processing
         tasks = [
