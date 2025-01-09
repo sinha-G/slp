@@ -1,3 +1,21 @@
+"""
+input_dataset.py
+
+Implements the InputDataSet class, which provides a higher-level API to:
+ - Merge and filter Slippi data according to user-defined criteria (general features, player features, labels, etc.).
+ - Partition data into training, validation, and test splits without leakage (split by game).
+ - Generate data segments (e.g., 1-second or 60-second slices) for sequence modeling.
+ - Convert the data into either a DataFrame or a NumPy array for training with various ML frameworks.
+
+Usage highlights:
+ 1. Configure source datasets (ranked, public, mango).
+ 2. Define feature filters for both general game properties and specific players.
+ 3. Specify label info to train on (e.g., which character or netplay code).
+ 4. Generate training/test splits in a reproducible way, preventing data leakage by separating entire games between sets.
+
+The class supports flexible segment lengths, overlapping segments, and optional validation sets, making it well-suited for time-series or sequence-based model development.
+"""
+
 import os
 import sys
 import gzip

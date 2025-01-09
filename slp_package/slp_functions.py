@@ -1,3 +1,20 @@
+"""
+slp_functions.py
+
+A collection of utility functions for working with Slippi replay datasets:
+ - one_hot_encode_flags:   One-hot encodes enumerated flags into lists.
+ - create_merged_game_data_df: Merges multiple Slippi datasets (ranked, public, mango) into a single DataFrame.
+ - apply_general_filters:  Applies user-defined feature filters (stage, conclusive, etc.) to the merged data.
+ - identify_and_label_players: Identifies which player matches specified features, then renames columns accordingly.
+ - extract_label:          Extracts a specified label column for training (e.g., character or netplay code).
+ - prepare_data_for_training: A convenience function to combine filtering, feature labeling, and label extraction into one step.
+ - segment_overlap_info:   (Example function) Calculates overlap information for different segment lengths.
+
+These functions serve as building blocks for:
+ - Filtering and merging Slippi metadata.
+ - Generating consistent data structures for downstream tasks like ML training.
+"""
+
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import numpy as np
