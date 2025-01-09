@@ -251,3 +251,11 @@ def prepare_data_loaders(train_df, test_df, batch_size, num_workers):
     return loaders
 ```
 
+---
+By extracting all the data and using the input_dataset module, you can efficiently prepare data to train machine learing models on a variaety of time series classification problems using the player's inputs. Some possibilities:
+- Classify which stage a player playing Fox is on.
+- Classify if the Falco being played is Mang0 or not.
+- Classify which of Zain and Kodorin Mang0 is playing against.
+- Classify which character the player is playing as.
+- Classify what character a Fox player is playing against.
+Extracting all the data took several hours, but once it is extracted, you can quickly filter and label the data to train models on a variety of tasks.
