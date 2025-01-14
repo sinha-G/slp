@@ -104,7 +104,7 @@ class InputDataSet():
             # Apply the masks to filter the DataFrame
             player_1_df = df[player_1_mask]
             player_2_df = df[player_2_mask]
-
+            
             # Rename columns for player_1 and player_2 in their respective DataFrames
             player_1_df = player_1_df.rename(columns=lambda col: col.replace('player_1_', 'player_') if 'player_1_' in col else col.replace('player_2_', 'opposing_player_'))
             player_2_df = player_2_df.rename(columns=lambda col: col.replace('player_2_', 'player_') if 'player_2_' in col else col.replace('player_1_', 'opposing_player_'))
