@@ -318,43 +318,90 @@ class InputDataSet():
 
         return test_df, val_df, train_df
 
-    def create_training_dataframe(self, df):
+    # def create_training_dataframe(self, df):
+    #     """
+    #     Generate a DataFrame that lists the segments for training, where each row corresponds to a segment.
+        
+    #     Parameters:
+    #     df (DataFrame): DataFrame containing the output from `divide_games`, which includes 'num_segments' and 'length'.
+    #     segment_length_power (int): The power of 2 used to determine the segment length.
+        
+    #     Returns:
+    #     DataFrame: A new DataFrame where each row represents a segment, including the start index of each segment.
+    #     """
+    #     # Calculate the segment length as a power of 2
+    #     # segment_length = 2 ** self.segment_length_power
+        
+    #     # Retrieve the 'num_segments' column as an array to determine how many times to repeat each row
+    #     repeats = df['num_segments'].values
+
+    #     # Repeat each index in the DataFrame according to the number of segments it should be split into
+    #     index_repeated = np.repeat(df.index, repeats)
+        
+    #     # Duplicate rows in the DataFrame based on the repeat counts for each row
+    #     df_repeated = df.loc[index_repeated].reset_index(drop=True)
+        
+    #     # Generate a sequential 'segment_index' for each group of repeated rows
+    #     segment_indices = np.concatenate([np.arange(n, dtype=np.int16) for n in repeats])
+        
+    #     # Calculate the start index of each segment within the game
+    #     df_repeated['segment_start_index'] = ((df_repeated['length'] - self.segment_length) // df_repeated['num_segments']) * segment_indices
+        
+    #     # Drop columns that are no longer necessary after computing 'segment_start_index'
+    #     df_repeated = df_repeated.drop(columns=['length', 'num_segments'])
+
+    #     # Add 'segment_index' to the DataFrame to keep track of each segment within its group
+    #     df_repeated['segment_index'] = segment_indices
+        
+    #     df_repeated['segment_length'] = self.segment_length
+        
+    #     return df_repeated
+    
+    def create_training_dataframe(self, df, shift=None):
         """
         Generate a DataFrame that lists the segments for training, where each row corresponds to a segment.
-        
+
         Parameters:
-        df (DataFrame): DataFrame containing the output from `divide_games`, which includes 'num_segments' and 'length'.
-        segment_length_power (int): The power of 2 used to determine the segment length.
-        
+        -----------
+        df (DataFrame): 
+            Must include ['num_segments', 'length'] columns (output from `divide_games` or `divide_games_all_segments`).
+        shift (int): 
+            The difference in start indices between consecutive segments (controls overlap). 
+            If None, defaults to `segment_length` for no overlap.
+
         Returns:
-        DataFrame: A new DataFrame where each row represents a segment, including the start index of each segment.
+        --------
+        DataFrame: A new DataFrame where each row represents a segment, 
+                    including the start index of each segment ('segment_start_index').
         """
-        # Calculate the segment length as a power of 2
-        # segment_length = 2 ** self.segment_length_power
-        
-        # Retrieve the 'num_segments' column as an array to determine how many times to repeat each row
-        repeats = df['num_segments'].values
+        # If shift isn't given, default to using segment_length (so no overlap by default)
+        if shift is None:
+            shift = self.segment_length
 
-        # Repeat each index in the DataFrame according to the number of segments it should be split into
+        # We want one row per segment, so we look at the 'num_segments' column:
+        repeats = df['num_segments'].values  # how many segments each game row is split into
+        # Example: If num_segments[i] = 4, that row repeats 4 times.
+
+        # Expand the DataFrame by repeating each row according to 'num_segments'
         index_repeated = np.repeat(df.index, repeats)
-        
-        # Duplicate rows in the DataFrame based on the repeat counts for each row
         df_repeated = df.loc[index_repeated].reset_index(drop=True)
-        
-        # Generate a sequential 'segment_index' for each group of repeated rows
-        segment_indices = np.concatenate([np.arange(n, dtype=np.int16) for n in repeats])
-        
-        # Calculate the start index of each segment within the game
-        df_repeated['segment_start_index'] = ((df_repeated['length'] - self.segment_length) // df_repeated['num_segments']) * segment_indices
-        
-        # Drop columns that are no longer necessary after computing 'segment_start_index'
-        df_repeated = df_repeated.drop(columns=['length', 'num_segments'])
 
-        # Add 'segment_index' to the DataFrame to keep track of each segment within its group
+        # Create a segment_index array: 0, 1, 2, ... for each repeated group
+        segment_indices = np.concatenate([np.arange(n, dtype=np.int32) for n in repeats])
         df_repeated['segment_index'] = segment_indices
-        
+
+        # The start index of each segment. 
+        #   first segment: 0
+        #   second: shift
+        #   n-th: n * shift
+        df_repeated['segment_start_index'] = df_repeated['segment_index'] * shift
+
+        # Optionally drop columns you do not need
+        # df_repeated = df_repeated.drop(columns=['length', 'num_segments'])
+
+        # We'll store the chosen segment_length if you want it
         df_repeated['segment_length'] = self.segment_length
-        
+
         return df_repeated
 
     # def create_training_numpy(df, segment_length_power):
@@ -462,80 +509,241 @@ class InputDataSet():
     
         return X_train_df, X_test_df   
     
-    def divide_games_all_segments(self, segment_length, proportion_of_segments=1, test_ratio = .15, val_ratio = .15, val = True):
+    # def divide_games_all_segments(self, segment_length, proportion_of_segments=1, test_ratio = .15, val_ratio = .15, val = True):
         
-        # Copy the dataframe to avoid modifying the original data
-        df = self.dataset.copy()
-        df = df[df['length'] > segment_length]
-        df = df[df['length'] <= 8*60*60]
+    #     # Copy the dataframe to avoid modifying the original data
+    #     df = self.dataset.copy()
+    #     df = df[df['length'] > segment_length]
+    #     df = df[df['length'] <= 8*60*60]
         
-        # Add a column with the number of segments you will get from each game
-        df['num_segments'] = round((df['length'] // segment_length) * proportion_of_segments)
+    #     # Add a column with the number of segments you will get from each game
+    #     df['num_segments'] = round((df['length'] // segment_length) * proportion_of_segments)
         
-        # print(df.head())
+    #     # print(df.head())
         
-        # Initialize empty lists to store split dataframes
-        test_dfs, val_dfs, train_dfs = [], [], []
+    #     # Initialize empty lists to store split dataframes
+    #     test_dfs, val_dfs, train_dfs = [], [], []
         
-        # Process each label separately
-        for label in df['labels'].unique():
-            # Filter the dataframe for the current label and shuffle
-            label_df = df[df['labels'] == label].sample(frac=1).reset_index(drop=True)
+    #     # Process each label separately
+    #     for label in df['labels'].unique():
+    #         # Filter the dataframe for the current label and shuffle
+    #         label_df = df[df['labels'] == label].sample(frac=1).reset_index(drop=True)
             
-            # Calculate cumulative sum to find the cutoff points for splitting
-            num_segments_cumsum = label_df['num_segments'].cumsum()
+    #         # Calculate cumulative sum to find the cutoff points for splitting
+    #         num_segments_cumsum = label_df['num_segments'].cumsum()
             
-            num_segments_test = round(num_segments_cumsum.iloc[-1] * test_ratio)
-            # print(label, num_segments_cumsum.iloc[-1], num_segments_test,  num_segments_test / num_segments_cumsum.iloc[-1])
-            num_segments_val = round(num_segments_cumsum.iloc[-1] * val_ratio) * val
+    #         num_segments_test = round(num_segments_cumsum.iloc[-1] * test_ratio)
+    #         # print(label, num_segments_cumsum.iloc[-1], num_segments_test,  num_segments_test / num_segments_cumsum.iloc[-1])
+    #         num_segments_val = round(num_segments_cumsum.iloc[-1] * val_ratio) * val
 
-            # Determine the index to split test and train datasets
-            test_idx = num_segments_cumsum[num_segments_cumsum <= num_segments_test].last_valid_index() or 0
-            val_idx = num_segments_cumsum[num_segments_cumsum <= num_segments_test + num_segments_val].last_valid_index() or test_idx
+    #         # Determine the index to split test and train datasets
+    #         test_idx = num_segments_cumsum[num_segments_cumsum <= num_segments_test].last_valid_index() or 0
+    #         val_idx = num_segments_cumsum[num_segments_cumsum <= num_segments_test + num_segments_val].last_valid_index() or test_idx
     
             
             
-            # Split the data based on calculated indices
-            test_label_df = label_df.iloc[:test_idx + 1].copy()
-            val_label_df = label_df.iloc[test_idx + 1:val_idx + 1].copy() if val else pd.DataFrame(columns = label_df.columns)
-            train_label_df = label_df.iloc[val_idx + 1:].copy()
+    #         # Split the data based on calculated indices
+    #         test_label_df = label_df.iloc[:test_idx + 1].copy()
+    #         val_label_df = label_df.iloc[test_idx + 1:val_idx + 1].copy() if val else pd.DataFrame(columns = label_df.columns)
+    #         train_label_df = label_df.iloc[val_idx + 1:].copy()
             
 
-            # Append the processed dataframes to their respective lists
+    #         # Append the processed dataframes to their respective lists
+    #         test_dfs.append(test_label_df)
+    #         val_dfs.append(val_label_df)
+    #         train_dfs.append(train_label_df)
+            
+
+    #         # print(label, test_label_df['num_segments'].sum() / train_label_df['num_segments'].sum() )
+    #         # print()
+        
+    #     # Concatenate all the dataframes in each list to create the final splits
+    #     return_columns = ['player_inputs_np_sub_path',  'length', 'num_segments','labels']
+    #     test_df = pd.concat(test_dfs, ignore_index=True)[return_columns]
+    #     val_df = pd.concat(val_dfs, ignore_index=True)[return_columns] if val else pd.DataFrame(columns=return_columns)
+    #     train_df = pd.concat(train_dfs, ignore_index=True)[return_columns]
+        
+    #     # Encode the labels for training
+    #     label_encoder = LabelEncoder()
+    #     label_encoder.fit(df['labels'].unique())
+    #     test_df['encoded_labels'] = label_encoder.fit_transform(test_df['labels'])
+    #     val_df['encoded_labels'] = label_encoder.fit_transform(val_df['labels'])
+    #     train_df['encoded_labels'] = label_encoder.fit_transform(train_df['labels'])
+
+
+    #     return test_df, val_df, train_df
+    
+    def divide_games_all_segments(self, segment_length, proportion_of_segments=1, 
+                                  test_ratio=0.15, val_ratio=0.15, val=True):
+        """
+        Splits games into train, test, and (optionally) validation sets by taking
+        *all* possible segments of length 'segment_length' from each game, 
+        without the floating/approx approach.
+
+        Each game i has:
+          num_segments_i = floor((length_i - segment_length) / shift) + 1 
+          if shift is used outside. But here we do a simpler approach 
+          (unless we incorporate shift below).
+
+        NOTE: We’ll modify this so that if shift is given later, 
+              we actually compute with shift. For now, we do the original method 
+              (no overlap logic).
+        """
+
+        # We'll do a simpler approach: only include games with length >= segment_length
+        df = self.dataset.copy()
+        df = df[df['length'] >= segment_length]
+        # Some safety guard in case there's extremely long games
+        df = df[df['length'] <= 8*60*60]  # up to 8 hours?
+
+        # Original logic for number_of_segments:
+        # df['num_segments'] = round((df['length'] // segment_length) * proportion_of_segments)
+        # We'll keep this line here, but we might move it to a separate function 
+        # if you want shift-based overlap. For now, let's keep the original logic:
+        df['num_segments'] = (df['length'] // segment_length)  # integer division
+        df['num_segments'] = round(df['num_segments'] * proportion_of_segments)
+        df.loc[df['num_segments'] < 0, 'num_segments'] = 0
+
+        # Now do your test/val/train splits by label, proportionate to 'num_segments'
+        test_dfs, val_dfs, train_dfs = [], [], []
+        for label in df['labels'].unique():
+            label_df = df[df['labels'] == label].sample(frac=1).reset_index(drop=True)
+            cumsum_segments = label_df['num_segments'].cumsum()
+
+            total_segments = cumsum_segments.iloc[-1] if len(cumsum_segments) > 0 else 0
+            test_cut = round(total_segments * test_ratio)
+            val_cut  = round(total_segments * val_ratio) if val else 0
+
+            test_idx = cumsum_segments[cumsum_segments <= test_cut].last_valid_index() or 0
+            val_idx  = cumsum_segments[cumsum_segments <= (test_cut + val_cut)].last_valid_index() or test_idx
+
+            test_label_df = label_df.iloc[:test_idx + 1].copy()
+            val_label_df  = label_df.iloc[test_idx + 1: val_idx + 1].copy() if val else pd.DataFrame(columns=label_df.columns)
+            train_label_df= label_df.iloc[val_idx + 1:].copy()
+
             test_dfs.append(test_label_df)
             val_dfs.append(val_label_df)
             train_dfs.append(train_label_df)
-            
 
-            # print(label, test_label_df['num_segments'].sum() / train_label_df['num_segments'].sum() )
-            # print()
-        
-        # Concatenate all the dataframes in each list to create the final splits
-        return_columns = ['player_inputs_np_sub_path',  'length', 'num_segments','labels']
-        test_df = pd.concat(test_dfs, ignore_index=True)[return_columns]
-        val_df = pd.concat(val_dfs, ignore_index=True)[return_columns] if val else pd.DataFrame(columns=return_columns)
-        train_df = pd.concat(train_dfs, ignore_index=True)[return_columns]
-        
-        # Encode the labels for training
+        return_cols = ['player_inputs_np_sub_path', 'length', 'num_segments', 'labels']
+        test_df  = pd.concat(test_dfs, ignore_index=True)[return_cols]
+        val_df   = pd.concat(val_dfs,  ignore_index=True)[return_cols] if val else pd.DataFrame(columns=return_cols)
+        train_df = pd.concat(train_dfs,ignore_index=True)[return_cols]
+
+        # Encode labels 
         label_encoder = LabelEncoder()
         label_encoder.fit(df['labels'].unique())
-        test_df['encoded_labels'] = label_encoder.fit_transform(test_df['labels'])
-        val_df['encoded_labels'] = label_encoder.fit_transform(val_df['labels'])
-        train_df['encoded_labels'] = label_encoder.fit_transform(train_df['labels'])
-
+        test_df['encoded_labels']  = label_encoder.transform(test_df['labels'])
+        val_df['encoded_labels']   = label_encoder.transform(val_df['labels']) if val else None
+        train_df['encoded_labels'] = label_encoder.transform(train_df['labels'])
 
         return test_df, val_df, train_df
     
-    def all_segments_train_test_split_dataframes(self, segment_length, proportion_of_segments = 1, test_ratio = .15, val_ratio = .15, val = True):
-        test_df, val_df, train_df = self.divide_games_all_segments(segment_length,proportion_of_segments, test_ratio, val_ratio, val)
-        # print(test_df.head())
+    # def all_segments_train_test_split_dataframes(self, segment_length, proportion_of_segments = 1, test_ratio = .15, val_ratio = .15, val = True):
+    #     test_df, val_df, train_df = self.divide_games_all_segments(segment_length,proportion_of_segments, test_ratio, val_ratio, val)
+    #     # print(test_df.head())
         
-        X_train_df = self.create_training_dataframe(train_df)
+    #     X_train_df = self.create_training_dataframe(train_df)
         
-        X_test_df = self.create_training_dataframe(test_df)
+    #     X_test_df = self.create_training_dataframe(test_df)
         
-        if not val_df.empty:
-            X_val_df = self.create_training_dataframe(val_df)
-            return X_train_df, X_test_df, X_val_df
+    #     if not val_df.empty:
+    #         X_val_df = self.create_training_dataframe(val_df)
+    #         return X_train_df, X_test_df, X_val_df
     
-        return X_train_df, X_test_df   
+    #     return X_train_df, X_test_df   
+    
+    def all_segments_train_test_split_dataframes(self, segment_length, shift=None, 
+                                                 proportion_of_segments=1, 
+                                                 test_ratio=0.15, val_ratio=0.15, val=True):
+        """
+        Extends `divide_games_all_segments` to allow overlapping segments by specifying `shift`.
+
+        Parameters:
+        -----------
+        segment_length (int): 
+            Number of frames in each segment.
+        shift (int or None): 
+            How many frames to move forward for each subsequent segment (per game).
+            - If None, defaults to `segment_length` (no overlap).
+            - If shift < segment_length, segments will overlap.
+            - If shift > segment_length, there will be a gap.
+        proportion_of_segments (float):
+            A factor to multiply the total number of segments by (if you want to reduce or increase).
+        test_ratio (float): 
+            Proportion of segments for the test set.
+        val_ratio (float): 
+            Proportion of segments for the validation set.
+        val (bool): 
+            Whether to create a validation set.
+
+        Returns:
+        --------
+        (X_train_df, X_test_df, [X_val_df if val=True])
+        Each one is a dataframe with repeated rows: 
+            each row = one segment, including 'segment_start_index'.
+        """
+        self.segment_length = segment_length
+
+        # Copy the dataset
+        df = self.dataset.copy()
+        # Only keep games at least as long as segment_length
+        df = df[df['length'] >= segment_length]
+        df = df[df['length'] <= 8*60*60]
+
+        # If shift is None, default to no overlap
+        if shift is None:
+            shift = segment_length
+
+        # Calculate how many segments per game using overlap logic:
+        # num_segments = floor((length - segment_length)/shift) + 1
+        df['num_segments'] = (df['length'] - segment_length) // shift + 1
+        # If it's negative or zero, fix that:
+        df.loc[df['num_segments'] < 0, 'num_segments'] = 0
+        # Apply proportion_of_segments
+        df['num_segments'] = round(df['num_segments'] * proportion_of_segments)
+
+        # Split into train/test/val by label, proportionate to the 'num_segments'
+        test_dfs, val_dfs, train_dfs = [], [], []
+        for label in df['labels'].unique():
+            label_df = df[df['labels'] == label].sample(frac=1, random_state=42).reset_index(drop=True)
+            cumsum_segments = label_df['num_segments'].cumsum()
+
+            total_segments = cumsum_segments.iloc[-1] if len(cumsum_segments) > 0 else 0
+            test_cut = round(total_segments * test_ratio)
+            val_cut  = round(total_segments * val_ratio) if val else 0
+
+            test_idx = cumsum_segments[cumsum_segments <= test_cut].last_valid_index() or 0
+            val_idx  = cumsum_segments[cumsum_segments <= (test_cut + val_cut)].last_valid_index() or test_idx
+
+            test_label_df = label_df.iloc[:test_idx + 1].copy()
+            val_label_df  = label_df.iloc[test_idx + 1: val_idx + 1].copy() if val else pd.DataFrame(columns=label_df.columns)
+            train_label_df= label_df.iloc[val_idx + 1:].copy()
+
+            test_dfs.append(test_label_df)
+            val_dfs.append(val_label_df)
+            train_dfs.append(train_label_df)
+
+        return_cols = ['player_inputs_np_sub_path', 'length', 'num_segments', 'labels']
+        test_df  = pd.concat(test_dfs, ignore_index=True)[return_cols]
+        val_df   = pd.concat(val_dfs,  ignore_index=True)[return_cols] if val else pd.DataFrame(columns=return_cols)
+        train_df = pd.concat(train_dfs,ignore_index=True)[return_cols]
+
+        # Encode labels
+        label_encoder = LabelEncoder()
+        label_encoder.fit(df['labels'].unique())
+        test_df['encoded_labels']  = label_encoder.transform(test_df['labels'])
+        if not val_df.empty:
+            val_df['encoded_labels'] = label_encoder.transform(val_df['labels'])
+        train_df['encoded_labels'] = label_encoder.transform(train_df['labels'])
+
+        # Now expand each split into a row-per-segment form using create_training_dataframe()
+        # and passing the shift so we know how to compute start indices.
+        X_train_df = self.create_training_dataframe(train_df, shift=shift)
+        X_test_df  = self.create_training_dataframe(test_df,  shift=shift)
+
+        if not val_df.empty:
+            X_val_df = self.create_training_dataframe(val_df, shift=shift)
+            return X_train_df, X_test_df, X_val_df
+        else:
+            return X_train_df, X_test_df
