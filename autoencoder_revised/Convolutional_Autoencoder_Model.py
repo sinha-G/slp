@@ -236,10 +236,25 @@ class Autoencoder(nn.Module):
         x = self.decoder(x)
         return x
 
-        
+class Encoder_Model(nn.Module):
+    def __init__(self, layer_list, num_channels=9):
+        super(Encoder_Model, self).__init__()
+        self.num_channels = num_channels
+        self.bottleneck_size = 15
+        self.encoder = Encoder(layer_list, self.num_channels, self.bottleneck_size)
+        self.decoder = Decoder(layer_list, self.num_channels, self.bottleneck_size)
+
+    def forward(self, x):
+        # print(self.in_channels)
+        x = self.encoder(x)
+        # x = self.decoder(x)
+        return x        
 
     
-        
+def ResNet_Encoder(channels=13):
+    # return Autoencoder([3,4,23,3],  channels)
+    return Encoder([3,4,6,3], channels)
+    # return Autoencoder([2,2,2,2],  channels)        
         
 def ResNet_Autoencoder(channels=13):
     # return Autoencoder([3,4,23,3],  channels)
