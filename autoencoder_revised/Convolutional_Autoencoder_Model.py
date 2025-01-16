@@ -253,7 +253,7 @@ class Encoder_Model(nn.Module):
     
 def ResNet_Encoder(channels=13):
     # return Autoencoder([3,4,23,3],  channels)
-    return Encoder([3,4,6,3], channels)
+    return Encoder_Model([3,4,6,3], channels)
     # return Autoencoder([2,2,2,2],  channels)        
         
 def ResNet_Autoencoder(channels=13):
