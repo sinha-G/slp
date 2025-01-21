@@ -1,8 +1,15 @@
+"""
+This model modifies the ResNet autoencoder we used in  resnet_classify/ResNet_Model.py to classify all the characters.
+The ResNet model became the encoder and then we created a decoder that reversed each step of ResNet.
+https://github.com/JayPatwardhan/ResNet-PyTorch was used as a reference for the ResNet model.
+"""
+
+
 import torch
 import torch.nn as  nn
 import torch.nn.functional as F
 
-# https://github.com/JayPatwardhan/ResNet-PyTorch
+
 
 class Encoder_Bottleneck(nn.Module):
     expansion = 4
